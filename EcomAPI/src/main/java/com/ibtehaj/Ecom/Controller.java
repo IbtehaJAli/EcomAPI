@@ -1,10 +1,13 @@
 package com.ibtehaj.Ecom;
+
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
+import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -36,6 +39,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.util.concurrent.RateLimiter;
 
+
 @RestController
 @RequestMapping("/api/ecom/")
 public class Controller {
@@ -55,27 +59,182 @@ public class Controller {
 
 	@Autowired
 	private final AccessTokenRepository accessTokenRepository;
+	
+	@Autowired
+	private final ProductRepository productRepository;
 
 	@Autowired
 	private final AccessTokenUtils accessTokenUtils;
 
 	@Autowired
+	private final ProductService productService;
+
+	@Autowired
+	private final StockService stockService;
+
+	@Autowired
+	private final PasswordResetTokenService passwordResetTokenService;
+
+	@Autowired
+	private final EmailService emailService;
+
+	@Autowired
 	public Controller(UserRepository userRepository, TokenBlacklist blacklist,
-			AccessTokenRepository accessTokenRepository, AccessTokenUtils accessTokenUtils) {
+			AccessTokenRepository accessTokenRepository,ProductRepository productRepository, AccessTokenUtils accessTokenUtils,
+			ProductService productService, StockService stockService,
+			PasswordResetTokenService passwordResetTokenService, EmailService emailService) {
 		this.userRepository = userRepository;
 		this.blacklist = blacklist;
 		this.accessTokenRepository = accessTokenRepository;
+		this.productRepository = productRepository;
 		this.accessTokenUtils = accessTokenUtils;
+		this.productService = productService;
+		this.stockService = stockService;
+		this.passwordResetTokenService = passwordResetTokenService;
+		this.emailService = emailService;
+	}
+	@PostMapping("createProduct")
+	@CheckBlacklist
+	public ResponseEntity<?> createProduct(@Valid @RequestBody ProductRequest request) {
+			productService.createProduct(request);
+			return ResponseEntity.status(HttpStatus.CREATED).body(new SuccessResponse("Product created successfully."));
+		
 	}
 
-	
-	@Autowired
-	private PasswordResetTokenService passwordResetTokenService;
+	@GetMapping("getProduct/{productId}")
+	@CheckBlacklist
+	public ResponseEntity<Product> getProductById(@PathVariable Long productId) {
+		// Retrieve the product by ID
+		Product product = productService.getProductById(productId);
+		if (product != null) {
+			return ResponseEntity.ok(product);
+		} else {
+			return ResponseEntity.notFound().build();
+		}
+	}
 
-	@Autowired
-	private EmailService emailService;
+	@GetMapping("getAllProducts")
+	@CheckBlacklist
+	public ResponseEntity<List<Product>> getAllProducts() {
+		List<Product> products = productService.getAllProducts();
+		return ResponseEntity.ok(products);
+	}
 
+	@PutMapping("updateProduct/{productId}")
+	@CheckBlacklist
+	public ResponseEntity<String> updateProduct(@PathVariable Long productId, @RequestBody ProductRequest request) {
+		// Update the product
+		boolean updated = productService.updateProduct(productId, request);
+		if (updated) {
+			return ResponseEntity.ok("Product updated successfully");
+		} else {
+			return ResponseEntity.notFound().build();
+		}
+	}
+
+	@DeleteMapping("deleteProduct/{productId}")
+	@CheckBlacklist
+	public ResponseEntity<?> deleteProduct(@PathVariable Long productId) {
+		// Delete the product
+		boolean deleted = productService.deleteProduct(productId);
+		if (deleted) {
+			return ResponseEntity.ok(new SuccessResponse("Product deleted successfully"));
+		} else {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"product with id: " + productId + " not found.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+	}
+
+	@PostMapping("createStock/{productId}")
+	@CheckBlacklist
+	public ResponseEntity<?> createProductStock(@PathVariable Long productId, @Valid @RequestBody StockRequest request) {
+
+		boolean flag = stockService.createProductStock(productId, request);
+		if (flag) {
+			return ResponseEntity.status(HttpStatus.CREATED).body(new SuccessResponse("Stock created successfully."));
+		} else {
+			ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(),
+					"product with id: " + productId + " not found.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+		}
+
+	}
+
+	@GetMapping("getStock/{stockId}")
+	@CheckBlacklist
+	public ResponseEntity<?> getStockById(@PathVariable Long stockId) {
+		// Retrieve the stock by ID
+		ProductStock productStock = stockService.getStockById(stockId);
+		if (productStock != null) {
+			return ResponseEntity.ok(productStock);
+		} else {
+			return ResponseEntity.notFound().build();
+		}
+	}
+
+	@GetMapping("getAllStocks")
+	@CheckBlacklist
+	public ResponseEntity<List<ProductStock>> getAllStocks() {
+		List<ProductStock> productStocks = stockService.getAllStocks();
+		return ResponseEntity.ok(productStocks);
+	}
 	
+	@GetMapping("getStocksByProduct/{productId}")
+	@CheckBlacklist
+	public ResponseEntity<?>getStocksByProduct(@PathVariable Long productId){
+		Optional<Product> optionalProduct = productRepository.findById(productId);
+		if(optionalProduct.isPresent()) {
+			Product product = optionalProduct.get();
+			List<ProductStock> productStocks = stockService.getStocksByProdcut(product);
+			return ResponseEntity.ok(productStocks);
+		}else {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"product with id: " + productId + " not found.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+		
+	}
+
+	@PutMapping("updateStock/{stockId}")
+	@CheckBlacklist
+	public ResponseEntity<?> updateStock(@PathVariable Long stockId, @RequestBody StockRequest request) {
+		// Update the stock
+		boolean updated = stockService.updateStockforProduct(stockId, request);
+		if (updated) {
+			return ResponseEntity.ok("Stock updated successfully");
+		} else {
+			return ResponseEntity.notFound().build();
+		}
+	}
+
+	@DeleteMapping("deleteStock/{stockId}")
+	@CheckBlacklist
+	public ResponseEntity<?> deleteStock(@PathVariable Long stockId) {
+		// Delete the stock
+		boolean deleted = stockService.deleteStockforProduct(stockId);
+		if (deleted) {
+			return ResponseEntity.ok(new SuccessResponse("Stock deleted successfully"));
+		} else {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"stock with id: " + stockId + " not found.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+	}
+	
+	@DeleteMapping("deleteAllStockByProduct/{productId}")
+	@CheckBlacklist
+	public ResponseEntity<?> deleteAllStockByProduct(@PathVariable Long productId) {
+		// Delete all stocks
+		boolean deleted = stockService.deleteAllStockforProduct(productId);
+		if (deleted) {
+			return ResponseEntity.ok(new SuccessResponse("All Stocks deleted successfully for product with id: "+productId));
+		} else {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"product with id: " + productId + " not found.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+	}
 
 	@PostMapping("/signup")
 	public ResponseEntity<?> signUp(@Valid @RequestBody SignUpRequest userRequest) {

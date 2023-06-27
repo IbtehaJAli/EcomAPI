@@ -85,7 +85,14 @@ public class RestExceptionHandler {
 				errors.add("You are already logged out.");
 				ExceptionResponse errorResponse = new ExceptionResponse(errors);
 				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-			} else {
+			}else if(errorMessage.startsWith("ERROR: duplicate key value violates unique constraint \"product_code_key\"\n")) {
+				// If the error message starts with the specific string, return a response entity with HTTP status code 400 (Bad Request) and the "You are already logged out" message as the body
+				List<String> errors = new ArrayList<>();
+				errors.add("Product with this code already exists");
+				ExceptionResponse errorResponse = new ExceptionResponse(errors);
+				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+			}
+			else {
 				// If the error message does not start with the specific string, create an ExceptionResponse object with the error message
 				// Create an ExceptionResponse object with the error message
 				List<String> errors = new ArrayList<>();

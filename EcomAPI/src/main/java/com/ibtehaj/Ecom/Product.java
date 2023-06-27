@@ -1,75 +1,66 @@
 package com.ibtehaj.Ecom;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
+import jakarta.persistence.*;
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 @Entity
+@Table(name = "product")
 public class Product {
 	@Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name;
+    @Column(name = "product_name")
+    private String productName;
 
-    private String description;
+    @Column(unique = true)
+    private String code;
 
-    private double price;
+    @JsonProperty
+    private String attributes;
 
-    @ManyToOne
-    @JoinColumn(name = "category_id")
-    private Category category;
-
-    private String image;
-    
+    // Constructors, getters, and setters
     public Product() {};
-    public Product(String name, String description, double price, Category category, String image) {
+    
+    public Product(String productName, String code, String attributes) {
 		super();
-		this.name = name;
-		this.description = description;
-		this.price = price;
-		this.category = category;
-		this.image = image;
+		this.productName = productName;
+		this.code = code;
+		this.attributes = attributes;
+	}
+    
+    public String getProductName() {
+		return productName;
 	}
 
-    // getters and setters
-    public Long getId() {
+	public void setProductName(String productName) {
+		this.productName = productName;
+	}
+
+	public String getCode() {
+		return code;
+	}
+
+	public void setCode(String code) {
+		this.code = code;
+	}
+
+	public String getAttributes() {
+		return attributes;
+	}
+
+	public void setAttributes(String attributes) {
+		this.attributes = attributes;
+	}
+    
+	public Long getId() {
 		return id;
 	}
+
 	public void setId(Long id) {
 		this.id = id;
 	}
-	public String getName() {
-		return name;
-	}
-	public void setName(String name) {
-		this.name = name;
-	}
-	public String getDescription() {
-		return description;
-	}
-	public void setDescription(String description) {
-		this.description = description;
-	}
-	public double getPrice() {
-		return price;
-	}
-	public void setPrice(double price) {
-		this.price = price;
-	}
-	public Category getCategory() {
-		return category;
-	}
-	public void setCategory(Category category) {
-		this.category = category;
-	}
-	public String getImage() {
-		return image;
-	}
-	public void setImage(String image) {
-		this.image = image;
-	}
+    
 }

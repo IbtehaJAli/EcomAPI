@@ -19,12 +19,8 @@ public class User {
 	@ElementCollection(fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)
     private Set<UserRole> roles = new HashSet<>();
-	@OneToOne(mappedBy = "user")
-    private Cart cart;
-
-    @OneToMany(mappedBy = "user")
-    private List<Order> orders;
 	
+
 	public User() {
 	}
 
@@ -94,21 +90,6 @@ public class User {
 		this.roles = roles;
 	}
 	
-	public Cart getCart() {
-		return cart;
-	}
-
-	public void setCart(Cart cart) {
-		this.cart = cart;
-	}
-
-	public List<Order> getOrders() {
-		return orders;
-	}
-
-	public void setOrders(List<Order> orders) {
-		this.orders = orders;
-	}
 
 }
 
