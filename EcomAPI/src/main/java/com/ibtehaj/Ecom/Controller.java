@@ -1,5 +1,6 @@
 package com.ibtehaj.Ecom;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Collections;
@@ -71,6 +72,12 @@ public class Controller {
 
 	@Autowired
 	private final StockService stockService;
+	
+	@Autowired
+	private final CartService cartService;
+	
+	@Autowired
+	private final CartItemService cartItemService;
 
 	@Autowired
 	private final PasswordResetTokenService passwordResetTokenService;
@@ -78,10 +85,9 @@ public class Controller {
 	@Autowired
 	private final EmailService emailService;
 
-	@Autowired
 	public Controller(UserRepository userRepository, TokenBlacklist blacklist,
 			AccessTokenRepository accessTokenRepository,ProductRepository productRepository, AccessTokenUtils accessTokenUtils,
-			ProductService productService, StockService stockService,
+			ProductService productService, StockService stockService, CartService cartService, CartItemService cartItemService,
 			PasswordResetTokenService passwordResetTokenService, EmailService emailService) {
 		this.userRepository = userRepository;
 		this.blacklist = blacklist;
@@ -90,6 +96,8 @@ public class Controller {
 		this.accessTokenUtils = accessTokenUtils;
 		this.productService = productService;
 		this.stockService = stockService;
+		this.cartService = cartService;
+		this.cartItemService = cartItemService;
 		this.passwordResetTokenService = passwordResetTokenService;
 		this.emailService = emailService;
 	}
@@ -235,6 +243,155 @@ public class Controller {
 			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
 		}
 	}
+	
+	@PostMapping("createCartItem/{productId}/{quantity}")
+	@CheckBlacklist
+	public ResponseEntity<?> createCartItem(@PathVariable Long productId, @PathVariable int quantity)
+			throws NoAvailableStockException {
+		String username = accessTokenUtils.getUsernameFromAccessToken();
+		User user = userRepository.findByUsername(username);
+		if (user != null) {
+			Cart cart = cartService.createOrGetCartByUser(user);
+			if (cart != null) {
+				Product product = productService.getProductById(productId);
+				if (product != null) {
+					CartItem existingCartItem = cartItemService.findCartItemByProduct(product,cart);
+					if(existingCartItem!=null) {
+						existingCartItem.setProduct(product);
+						BigDecimal existingSubTotal = existingCartItem.getSubTotal();
+						int existingQuantity = existingCartItem.getQuantity();
+						quantity= quantity+existingQuantity;
+						existingCartItem.setQuantity(quantity);
+						ProductStock productStock = stockService.getLatestAvailableStockByProduct(product);
+						BigDecimal unitPrice = productStock.getUnitPrice();
+						BigDecimal subtotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
+						existingCartItem.setSubTotal(subtotal);
+						BigDecimal existingTotalAmount = cart.getTotalAmount();
+						BigDecimal difference = existingTotalAmount.subtract(existingSubTotal);
+						BigDecimal newTotalAmount = difference.add(subtotal);
+						cart.setTotalAmount(newTotalAmount);
+						cartService.saveCart(cart);
+						existingCartItem.setCart(cart);
+						cartItemService.createCartItem(existingCartItem);
+						return ResponseEntity.status(HttpStatus.CREATED)
+								.body(new SuccessResponse("CartItem updated successfully."));
+						
+						
+					}else {
+						ProductStock productStock = stockService.getLatestAvailableStockByProduct(product);
+						BigDecimal unitPrice = productStock.getUnitPrice();
+						BigDecimal subtotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
+						CartItem cartItem = new CartItem(product, quantity, subtotal, cart);
+						cartItemService.createCartItem(cartItem);
+						BigDecimal totalAmount = cart.getTotalAmount();
+						BigDecimal finaltotalAmount = totalAmount.add(subtotal);
+						cart.setTotalAmount(finaltotalAmount);
+						cartService.saveCart(cart);
+						return ResponseEntity.status(HttpStatus.CREATED)
+								.body(new SuccessResponse("CartItem created successfully."));
+					}
+					
+				} else {
+					ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+							"product with id: " + productId + " not found.", System.currentTimeMillis());
+					return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+				}
+			} else {
+				ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), "Cart not found.",
+						System.currentTimeMillis());
+				return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+			}
+
+		} else {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"User with user name" + username + " not found.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+
+	}
+	@GetMapping("getAllCartItemsByCart/")
+	@CheckBlacklist
+	public ResponseEntity<?> getAllCartItemsByCart() {
+		String username = accessTokenUtils.getUsernameFromAccessToken();
+		User user = userRepository.findByUsername(username);
+		if(user != null) {
+			Cart cart = cartService.getCartByUser(user);
+			if(cart != null) {
+				List<CartItem> cartItems= cartItemService.getAllCartItemsByCart(cart);
+				return ResponseEntity.ok(cartItems);
+			}else {
+				ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+						"Cart not found.", System.currentTimeMillis());
+				return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+			}
+		}else {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"User with user name"+ username+" not found.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+			
+	}
+	
+	@PutMapping("updateCartItem/{cartItemId}/{quantity}")
+	@CheckBlacklist
+	public ResponseEntity<?> updateCartItem(@PathVariable Long cartItemId, @PathVariable int quantity) throws NoAvailableStockException {
+		boolean updated = cartItemService.updateCartItem(cartItemId, quantity);
+		if(updated) {
+			return ResponseEntity.status(HttpStatus.OK)
+					.body(new SuccessResponse("CartItem with id: "+cartItemId+" updated  successfully."));
+		}
+		else {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"CartItem with id: "+cartItemId+" was not found.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+		
+	}
+	@DeleteMapping("deleteCartItemById/{cartItemId}")
+	@CheckBlacklist
+	public ResponseEntity<?> deleteCartItemById(@PathVariable Long cartItemId){
+		boolean deleted = cartItemService.deleteCartItemById(cartItemId);
+		if(deleted) {
+			return ResponseEntity.status(HttpStatus.OK)
+					.body(new SuccessResponse("CartItem with id: "+cartItemId+" deleted  successfully."));
+		}else {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"CartItem with id: "+cartItemId+" was not found.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+			}
+
+	}
+
+	@DeleteMapping("emptyCart/")
+	@CheckBlacklist
+	public ResponseEntity<?> emptyCart() {
+		String username = accessTokenUtils.getUsernameFromAccessToken();
+		User user = userRepository.findByUsername(username);
+		if (user != null) {
+			Cart cart = cartService.getCartByUser(user);
+			if (cart != null) {
+				boolean deleted = cartItemService.deleteAllCartItemsforCart(cart.getId());
+				if (deleted) {
+					return ResponseEntity.status(HttpStatus.OK)
+							.body(new SuccessResponse("Cart with id: " + cart.getId() + " is empty now."));
+				} else {
+					ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+							"Cart with id: " + cart.getId() + " was not found.", System.currentTimeMillis());
+					return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+				}
+			} else {
+				ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), "Cart not found.",
+						System.currentTimeMillis());
+				return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+			}
+		} else {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"User with user name" + username + " not found.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+
+	}
+	
 
 	@PostMapping("/signup")
 	public ResponseEntity<?> signUp(@Valid @RequestBody SignUpRequest userRequest) {

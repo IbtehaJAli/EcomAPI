@@ -1,5 +1,8 @@
 package com.ibtehaj.Ecom;
 
+import java.math.BigDecimal;
+
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -18,6 +21,9 @@ public class CartItem {
     private Product product;
 
     private int quantity;
+    
+    @Column(name = "sub_total")
+    private BigDecimal subTotal;
 
     @ManyToOne
     @JoinColumn(name = "cart_id")
@@ -25,10 +31,12 @@ public class CartItem {
     
     public CartItem() {};
     
-	public CartItem(Product product, int quantity) {
+	public CartItem(Product product, int quantity, BigDecimal subTotal, Cart cart) {
 		super();
 		this.product = product;
 		this.quantity = quantity;
+		this.subTotal = subTotal;
+		this.cart = cart;
 	}
 
     // getters and setters
@@ -55,7 +63,15 @@ public class CartItem {
 	public void setQuantity(int quantity) {
 		this.quantity = quantity;
 	}
+	
+	public BigDecimal getSubTotal() {
+		return subTotal;
+	}
 
+	public void setSubTotal(BigDecimal subTotal) {
+		this.subTotal = subTotal;
+	}
+	
 	public Cart getCart() {
 		return cart;
 	}

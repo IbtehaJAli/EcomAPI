@@ -56,6 +56,18 @@ public class RestExceptionHandler {
 		// Return a response entity with HTTP status code 401 (Unauthorized) and the error response object as the body
 		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
 	}
+	
+	// Define an exception handler for NoAvailableStockException
+		@ExceptionHandler(NoAvailableStockException.class)
+		public ResponseEntity<ExceptionResponse> handleCustomNoAvailableStockException(NoAvailableStockException e) {
+			// Create an ExceptionResponse object with the error message
+			List<String> errors = new ArrayList<>();
+			errors.add(e.getMessage());
+			ExceptionResponse errorResponse = new ExceptionResponse(errors);
+
+			// Return a response entity with HTTP status code 404 (Not Found) and the error response object as the body
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+		}
 
 	// Define an exception handler for PersistenceException and its subclasses
 	@ExceptionHandler(PersistenceException.class)

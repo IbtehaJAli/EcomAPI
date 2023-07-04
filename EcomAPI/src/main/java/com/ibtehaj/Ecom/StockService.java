@@ -94,4 +94,31 @@ public class StockService {
 	    }
 	}
 	
+	public ProductStock getLatestAvailableStockByProduct(Product product) throws NoAvailableStockException {
+	    // Retrieve all the stocks for the given product and order them by stockDate in descending order
+	    List<ProductStock> stocks = productStockRepository.findByProductOrderByStockDateDesc(product);
+
+	    // If there are no stocks, throw a custom exception
+	    if (stocks.isEmpty()) {
+	        throw new NoAvailableStockException("No available stock found for product " + product.getProductName());
+	    }
+
+	    // Iterate over the list of stocks and return the first stock with available units
+	    boolean foundStockWithAvailableUnits = false;
+	    for (ProductStock stock : stocks) {
+	        if (stock.getAvailableUnits() > 0) {
+	            foundStockWithAvailableUnits = true;
+	            return stock;
+	        }
+	    }
+
+	    // If all stocks have zero available units, throw a custom exception
+	    if (!foundStockWithAvailableUnits) {
+	        throw new NoAvailableStockException("All stocks for product " + product.getProductName() + " have zero available units");
+	    }
+
+	    // We shouldn't reach this point, but we need to return something to make the compiler happy
+	    return null;
+	}
+	
 }

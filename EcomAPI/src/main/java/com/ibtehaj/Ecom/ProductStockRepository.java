@@ -8,5 +8,6 @@ import org.springframework.stereotype.Repository;
 public interface ProductStockRepository extends JpaRepository<ProductStock, Long> {
 	List<ProductStock> findByProduct(Product product);
 	void deleteAllByProduct(Product product);
+	List<ProductStock> findByProductOrderByStockDateDesc(Product product);
  
 }

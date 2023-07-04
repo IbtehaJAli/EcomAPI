@@ -1,5 +1,10 @@
 package com.ibtehaj.Ecom;
 
+import java.math.BigDecimal;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -16,10 +21,19 @@ public class Cart {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
+    @JsonIgnore
     private User user;
+    
+    @Column(name = "total_amount")
+    private BigDecimal totalAmount;
 
     public Cart() {
     }
+    
+    public Cart(User user,BigDecimal totalAmount) {
+		this.user = user;
+		this.totalAmount = totalAmount;
+	}
 
     // getters and setters
     public Long getId() {
@@ -36,5 +50,13 @@ public class Cart {
 
 	public void setUser(User user) {
 		this.user = user;
+	}
+	
+	public BigDecimal getTotalAmount() {
+		return totalAmount;
+	}
+
+	public void setTotalAmount(BigDecimal totalAmount) {
+		this.totalAmount = totalAmount;
 	}
 }

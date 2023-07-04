@@ -12,11 +12,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class ProductService {
 
     private final ProductRepository productRepository;
-    private final ProductStockRepository productStockRepository;
 
     public ProductService(ProductRepository productRepository, ProductStockRepository productStockRepository) {
         this.productRepository = productRepository;
-        this.productStockRepository = productStockRepository;
     }
 
     public void createProduct(ProductRequest request) {
