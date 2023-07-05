@@ -153,6 +153,12 @@ public class Controller {
 			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
 		}
 	}
+	
+	@GetMapping("/products-with-stock-summary")
+	public ResponseEntity<List<ProductSummary>> getProductListWithStockSummary() {
+	    List<ProductSummary> productListWithStockSummary = productService.getProductListWithStockSummary();
+	    return ResponseEntity.ok(productListWithStockSummary);
+	}
 
 	@PostMapping("createStock/{productId}")
 	@CheckBlacklist
@@ -257,29 +263,29 @@ public class Controller {
 				if (product != null) {
 					CartItem existingCartItem = cartItemService.findCartItemByProduct(product,cart);
 					if(existingCartItem!=null) {
-						existingCartItem.setProduct(product);
+						existingCartItem.setProduct(product);//
 						BigDecimal existingSubTotal = existingCartItem.getSubTotal();
 						int existingQuantity = existingCartItem.getQuantity();
 						quantity= quantity+existingQuantity;
-						existingCartItem.setQuantity(quantity);
-						ProductStock productStock = stockService.getLatestAvailableStockByProduct(product);
-						BigDecimal unitPrice = productStock.getUnitPrice();
+						existingCartItem.setQuantity(quantity);//
+						ProductStockSummary productStockSummary = stockService.getProductStockSummary(product);
+						BigDecimal unitPrice = productStockSummary.getWeightedAvgUnitPrice();
 						BigDecimal subtotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
-						existingCartItem.setSubTotal(subtotal);
+						existingCartItem.setSubTotal(subtotal);//
 						BigDecimal existingTotalAmount = cart.getTotalAmount();
 						BigDecimal difference = existingTotalAmount.subtract(existingSubTotal);
 						BigDecimal newTotalAmount = difference.add(subtotal);
 						cart.setTotalAmount(newTotalAmount);
 						cartService.saveCart(cart);
-						existingCartItem.setCart(cart);
+						existingCartItem.setCart(cart);//
 						cartItemService.createCartItem(existingCartItem);
 						return ResponseEntity.status(HttpStatus.CREATED)
 								.body(new SuccessResponse("CartItem updated successfully."));
 						
 						
 					}else {
-						ProductStock productStock = stockService.getLatestAvailableStockByProduct(product);
-						BigDecimal unitPrice = productStock.getUnitPrice();
+						ProductStockSummary productStockSummary = stockService.getProductStockSummary(product);
+						BigDecimal unitPrice = productStockSummary.getWeightedAvgUnitPrice();
 						BigDecimal subtotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
 						CartItem cartItem = new CartItem(product, quantity, subtotal, cart);
 						cartItemService.createCartItem(cartItem);
@@ -349,8 +355,13 @@ public class Controller {
 	}
 	@DeleteMapping("deleteCartItemById/{cartItemId}")
 	@CheckBlacklist
-	public ResponseEntity<?> deleteCartItemById(@PathVariable Long cartItemId){
-		boolean deleted = cartItemService.deleteCartItemById(cartItemId);
+	public ResponseEntity<?> deleteCartItemById(@PathVariable Long cartItemId) throws CustomAccessDeniedException{
+		String username = accessTokenUtils.getUsernameFromAccessToken();
+		User user = userRepository.findByUsername(username);
+		boolean deleted = false;
+		if(user!=null) {
+		 deleted = cartItemService.deleteCartItemById(cartItemId,user);
+		}
 		if(deleted) {
 			return ResponseEntity.status(HttpStatus.OK)
 					.body(new SuccessResponse("CartItem with id: "+cartItemId+" deleted  successfully."));

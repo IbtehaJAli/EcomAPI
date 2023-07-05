@@ -1,5 +1,7 @@
 package com.ibtehaj.Ecom;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Optional;
 
@@ -120,5 +122,35 @@ public class StockService {
 	    // We shouldn't reach this point, but we need to return something to make the compiler happy
 	    return null;
 	}
+	
+	public ProductStockSummary getProductStockSummary(Product product) throws NoAvailableStockException {
+        List<ProductStock> productStocks = productStockRepository.findByProduct(product);
+        BigDecimal totalUnitPrice = BigDecimal.ZERO;
+        Long totalAvailableUnits = 0L;
+        boolean foundStockWithAvailableUnits = false;
+        for (ProductStock productStock : productStocks) {
+            BigDecimal unitPrice = productStock.getUnitPrice();
+            Long availableUnits = productStock.getAvailableUnits();
+
+            totalUnitPrice = totalUnitPrice.add(unitPrice.multiply(BigDecimal.valueOf(availableUnits)));
+            totalAvailableUnits += availableUnits;
+            if (availableUnits > 0) {
+	            foundStockWithAvailableUnits = true;
+	        }
+        }
+        // If all stocks have zero available units, throw a custom exception
+	    if (!foundStockWithAvailableUnits) {
+	        throw new NoAvailableStockException("All stocks for product " + product.getProductName() + " have zero available units");
+	    }
+	    
+        BigDecimal weightedAvgUnitPrice = BigDecimal.ZERO;
+        
+        if (totalAvailableUnits != 0L) {
+            weightedAvgUnitPrice = totalUnitPrice.divide(BigDecimal.valueOf(totalAvailableUnits), 2, RoundingMode.HALF_UP);
+        }
+
+        return new ProductStockSummary(weightedAvgUnitPrice, totalAvailableUnits);
+    }
+
 	
 }

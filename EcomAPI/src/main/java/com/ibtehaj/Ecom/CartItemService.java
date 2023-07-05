@@ -42,8 +42,8 @@ public class CartItemService {
 			CartItem cartItem = optionalCartItem.get();
 			Product product = cartItem.getProduct();
 			
-			ProductStock productStock = stockService.getLatestAvailableStockByProduct(product);
-			BigDecimal unitPrice = productStock.getUnitPrice();
+			ProductStockSummary productStockSummary = stockService.getProductStockSummary(product);
+			BigDecimal unitPrice = productStockSummary.getWeightedAvgUnitPrice();
 			BigDecimal newSubTotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
 			
 			Cart cart = cartItem.getCart();
@@ -64,11 +64,15 @@ public class CartItemService {
 		}
 	}
 	
-	public boolean deleteCartItemById(Long Id) {
+	public boolean deleteCartItemById(Long Id, User user) throws CustomAccessDeniedException {
 		Optional<CartItem> optionalCartItem = cartItemRepository.findById(Id);
 		if(optionalCartItem.isPresent()) {
 			CartItem cartItem = optionalCartItem.get();
 			Cart cart = cartItem.getCart();
+			User cartUser = cart.getUser();
+			if(cartUser!= user) {
+				throw new CustomAccessDeniedException("you can not allowed to perform this action");
+			}
 			BigDecimal subTotal = cartItem.getSubTotal();
 			BigDecimal totalAmount = cart.getTotalAmount();
 			BigDecimal difference = totalAmount.subtract(subTotal);

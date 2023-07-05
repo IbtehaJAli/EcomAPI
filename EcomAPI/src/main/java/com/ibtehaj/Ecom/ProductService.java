@@ -1,7 +1,10 @@
 package com.ibtehaj.Ecom;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Optional;
+import java.util.ArrayList;
 
 import org.springframework.stereotype.Service;
 
@@ -12,9 +15,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final ProductStockRepository productStockRepository;
 
     public ProductService(ProductRepository productRepository, ProductStockRepository productStockRepository) {
         this.productRepository = productRepository;
+        this.productStockRepository = productStockRepository;
     }
 
     public void createProduct(ProductRequest request) {
@@ -85,5 +90,43 @@ public class ProductService {
         } else {
             return false;
         }
+    }
+    
+    public List<ProductSummary> getProductListWithStockSummary() {
+        // Retrieve list of all products
+        List<Product> productList = productRepository.findAll();
+
+        // Create a new list for storing products with stock summary
+        List<ProductSummary> productListWithStockSummary = new ArrayList<>();
+
+        // Iterate over each product in the list
+        for (Product product : productList) {
+            // Retrieve all product stocks for the current product
+            List<ProductStock> productStockList = productStockRepository.findByProduct(product);
+
+            // Calculate the total available units and weighted average unit price for the product
+            Long totalAvailableUnits = 0L;
+            BigDecimal totalUnitPrice = BigDecimal.ZERO;
+            for (ProductStock productStock : productStockList) {
+                totalAvailableUnits += productStock.getAvailableUnits();
+                totalUnitPrice = totalUnitPrice.add(productStock.getUnitPrice().multiply(BigDecimal.valueOf(productStock.getAvailableUnits())));
+            }
+            if (totalAvailableUnits == 0) {
+                continue; // Skip this product if total available units is zero
+            }
+            BigDecimal weightedAvgUnitPrice = totalUnitPrice.divide(BigDecimal.valueOf(totalAvailableUnits), 2, RoundingMode.HALF_UP);
+
+            // Create a new ProductSummary instance with the stock summary information and add it to the list
+            ProductSummary productSummary = new ProductSummary();
+            productSummary.setId(product.getId());
+            productSummary.setProductName(product.getProductName());
+            productSummary.setCode(product.getCode());
+            productSummary.setAttributes(product.getAttributes());
+            productSummary.setTotalAvailableUnits(totalAvailableUnits);
+            productSummary.setWeightedAvgUnitPrice(weightedAvgUnitPrice);
+            productListWithStockSummary.add(productSummary);
+        }
+
+        return productListWithStockSummary;
     }
 }
