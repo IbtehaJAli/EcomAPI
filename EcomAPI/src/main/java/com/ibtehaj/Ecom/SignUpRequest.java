@@ -25,16 +25,25 @@ public class SignUpRequest {
     @NotBlank(message = "Please provide last name")
     @Size(max = 50, message = "Last name must be at most 50 characters")
     private String lastName;
+    
+    @NotBlank(message = "Phone number is required")
+    @Pattern(regexp = "^0[3]\\d{9}$", message = "Phone number must be in the format 03XXXXXXXXX")
+    private String phone;
+
+    @NotBlank(message = "Address is required")
+    private String address;
 
     public SignUpRequest() {
     }
 
-    public SignUpRequest(String username, String password, String email, String firstName, String lastName) {
+    public SignUpRequest(String username, String password, String email, String firstName, String lastName, String phone, String address) {
         this.username = username;
         this.password = password;
         this.email = email;
         this.firstName = firstName;
         this.lastName = lastName;
+        this.phone = phone;
+		this.address = address;
     }
 
     // Getters and setters
@@ -78,4 +87,20 @@ public class SignUpRequest {
     public void setLastName(String lastName) {
         this.lastName = lastName;
     }
+
+	public String getPhone() {
+		return phone;
+	}
+
+	public void setPhone(String phone) {
+		this.phone = phone;
+	}
+
+	public String getAddress() {
+		return address;
+	}
+
+	public void setAddress(String address) {
+		this.address = address;
+	}
 }

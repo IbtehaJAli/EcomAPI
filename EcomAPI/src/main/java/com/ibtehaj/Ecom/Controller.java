@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.ArrayList;
 
 import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -78,7 +79,16 @@ public class Controller {
 	
 	@Autowired
 	private final CartItemService cartItemService;
-
+	
+	@Autowired
+	private final CustomerService customerService;
+	
+	@Autowired
+	private final SaleService saleService;
+	
+	@Autowired
+	private final SaleItemService saleItemService;
+	
 	@Autowired
 	private final PasswordResetTokenService passwordResetTokenService;
 
@@ -88,6 +98,7 @@ public class Controller {
 	public Controller(UserRepository userRepository, TokenBlacklist blacklist,
 			AccessTokenRepository accessTokenRepository,ProductRepository productRepository, AccessTokenUtils accessTokenUtils,
 			ProductService productService, StockService stockService, CartService cartService, CartItemService cartItemService,
+			CustomerService customerService, SaleService saleService, SaleItemService saleItemService,
 			PasswordResetTokenService passwordResetTokenService, EmailService emailService) {
 		this.userRepository = userRepository;
 		this.blacklist = blacklist;
@@ -98,6 +109,9 @@ public class Controller {
 		this.stockService = stockService;
 		this.cartService = cartService;
 		this.cartItemService = cartItemService;
+		this.customerService = customerService;
+		this.saleService = saleService;
+		this.saleItemService = saleItemService;
 		this.passwordResetTokenService = passwordResetTokenService;
 		this.emailService = emailService;
 	}
@@ -402,7 +416,95 @@ public class Controller {
 		}
 
 	}
+	@PostMapping("checkout/")
+	@CheckBlacklist
+	public ResponseEntity<?> checkout() throws NoAvailableStockException{
+		String username = accessTokenUtils.getUsernameFromAccessToken();
+		User user = userRepository.findByUsername(username);
+		if (user!=null) {
+			Cart cart = cartService.getCartByUser(user);
+			if(cart!=null) {
+				List<CartItem> cartItems= cartItemService.getAllCartItemsByCart(cart);
+				if(!cartItems.isEmpty()) {
+					CustomerProfile customer = customerService.getOrCreateCustomerProfile(
+							user.getFirstName()+" "+user.getLastName(), user.getEmail(), user.getPhone(), user.getAddress());
+					Sale sale = new Sale(
+							LocalDateTime.now(), BigDecimal.ZERO, customer, BigDecimal.ZERO,null);
+					for(CartItem cartItem: cartItems) {
+						Product product = cartItem.getProduct();
+						ProductStock productStock = stockService.getOldestAvailableStockByProduct(product);
+						int quantity = cartItem.getQuantity();
+						ProductStockSummary productStockSummary = stockService.getProductStockSummary(product);
+						BigDecimal unitPrice = productStockSummary.getWeightedAvgUnitPrice();
+						BigDecimal subtotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
+						BigDecimal totalAmount = sale.getTotalAmount();
+						BigDecimal finalTotalAmount = totalAmount.add(subtotal);
+						sale.setTotalAmount(finalTotalAmount);
+						saleService.saveSale(sale);
+						SaleItem saleItem = new SaleItem(sale,productStock,quantity,subtotal,unitPrice,BigDecimal.ZERO);
+						saleItemService.createSaleItem(saleItem);
+						//reduce the stock
+						Long availableUnits = productStock.getAvailableUnits();
+						Long newAvailableUnits = availableUnits - quantity;
+						productStock.setAvailableUnits(newAvailableUnits);
+						stockService.saveStock(productStock);
+					}
+					cartItemService.deleteAllCartItemsforCart(cart.getId());
+					return ResponseEntity.status(HttpStatus.CREATED)
+							.body(new SuccessResponse(username+" your order with order id:"+ sale.getId()+" is created successfully."));
+				}else {
+					ErrorResponse error = new ErrorResponse(HttpStatus.NO_CONTENT.value(),
+							username + "'s cart is empty.", System.currentTimeMillis());
+					return new ResponseEntity<>(error, HttpStatus.NO_CONTENT);
+				}
+				
+			}else {
+				ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), "Cart not found.",
+						System.currentTimeMillis());
+				return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+			}
+		}else {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"User with user name" + username + " not found.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+	}
 	
+	@GetMapping("getAllSaleItemsBySale/")
+	@CheckBlacklist
+	public ResponseEntity<?> getAllSaleItemsBySale() {
+		String username = accessTokenUtils.getUsernameFromAccessToken();
+		User user = userRepository.findByUsername(username);
+		if(user != null) {
+			CustomerProfile customer = customerService.getCustomerProfileByEmail(user.getEmail());
+			if(customer!= null) {
+				List<Sale> sales = saleService.getSaleByCustomerProfile(customer);
+				if(!sales.isEmpty()) {
+					List<SaleItem> saleItems = new ArrayList<>();
+					for(Sale sale : sales) {
+						saleItems.addAll(saleItemService.getAllSaleItemsBySale(sale));
+					}
+					
+					return ResponseEntity.ok(saleItems);
+				}else {
+					ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+							"Customer not found.", System.currentTimeMillis());
+					return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+				}
+			
+			}else {
+				ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+						"Customer not found.", System.currentTimeMillis());
+				return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+			}
+			
+		}else {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"User with user name" + username + " not found.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+			
+	}
 
 	@PostMapping("/signup")
 	public ResponseEntity<?> signUp(@Valid @RequestBody SignUpRequest userRequest) {
@@ -434,7 +536,7 @@ public class Controller {
 		if (flag) {
 			// Create user
 			User user = new User(userRequest.getUsername(), userRequest.getPassword(), userRequest.getEmail(),
-					userRequest.getFirstName(), userRequest.getLastName(), Collections.singleton(UserRole.ROLE_USER));
+			userRequest.getFirstName(), userRequest.getLastName(), userRequest.getPhone(), userRequest.getAddress(), Collections.singleton(UserRole.ROLE_USER));
 			userRepository.save(user);
 			return ResponseEntity.ok(new SuccessResponse("User registered successfully"));
 		}

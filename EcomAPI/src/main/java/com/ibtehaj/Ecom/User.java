@@ -16,6 +16,8 @@ public class User {
 	private String email;
 	private String firstName;
 	private String lastName;
+	private String phone;
+	private String address;
 	@ElementCollection(fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)
     private Set<UserRole> roles = new HashSet<>();
@@ -24,12 +26,14 @@ public class User {
 	public User() {
 	}
 
-	public User(String username, String password, String email, String firstName, String lastName, Set<UserRole> roles) {
+	public User(String username, String password, String email, String firstName, String lastName, String phone, String address, Set<UserRole> roles) {
 		this.username = username;
 		this.password = password;
 		this.email = email;
 		this.firstName = firstName;
 		this.lastName = lastName;
+		this.phone = phone;
+		this.address = address;
 		this.roles = roles;
 	}
 
@@ -88,6 +92,22 @@ public class User {
 
 	public void setRoles(Set<UserRole> roles) {
 		this.roles = roles;
+	}
+
+	public String getPhone() {
+		return phone;
+	}
+
+	public void setPhone(String phone) {
+		this.phone = phone;
+	}
+
+	public String getAddress() {
+		return address;
+	}
+
+	public void setAddress(String address) {
+		this.address = address;
 	}
 	
 

@@ -3,8 +3,11 @@ package com.ibtehaj.Ecom;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import jakarta.persistence.*;
 
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 @Entity
 @Table(name = "product_stock")
 public class ProductStock {

@@ -18,6 +18,10 @@ public class StockService {
 		this.productRepository = productRepository;
 		this.productStockRepository = productStockRepository;
 	}
+	
+	public void saveStock(ProductStock productStock) {
+		productStockRepository.save(productStock);
+	}
 
 	public boolean createProductStock(Long productId, StockRequest request) {
 		Optional<Product> optionalproduct = productRepository.findById(productId);
@@ -121,6 +125,22 @@ public class StockService {
 
 	    // We shouldn't reach this point, but we need to return something to make the compiler happy
 	    return null;
+	}
+	
+	public ProductStock getOldestAvailableStockByProduct(Product product) throws NoAvailableStockException {
+	    List<ProductStock> stocks = productStockRepository.findByProductOrderByStockDateAsc(product);
+
+	    if (stocks.isEmpty()) {
+	        throw new NoAvailableStockException("No available stock found for product " + product.getProductName());
+	    }
+
+	    for (ProductStock stock : stocks) {
+	        if (stock.getAvailableUnits() > 0) {
+	            return stock;
+	        }
+	    }
+
+	    throw new NoAvailableStockException("All stocks for product " + product.getProductName() + " have zero available units");
 	}
 	
 	public ProductStockSummary getProductStockSummary(Product product) throws NoAvailableStockException {
