@@ -21,7 +21,9 @@ public class ProductService {
         this.productRepository = productRepository;
         this.productStockRepository = productStockRepository;
     }
-
+    public Product findProductByCode(String code) {
+    	return productRepository.findByCode(code);
+    }
     public void createProduct(ProductRequest request) {
         // Create Product entity
         Product product = new Product();

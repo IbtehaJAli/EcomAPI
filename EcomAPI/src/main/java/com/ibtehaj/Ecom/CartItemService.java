@@ -96,15 +96,21 @@ public class CartItemService {
 	        cartRepository.save(cart);
 	        // Delete all the cartItems entries for the Cart
 	        cartItemRepository.deleteAllByCart(cart);
+	        System.out.println("deleted");
 	        return true;
 	    } else {
 	        return false;
 	    }
 	}
 	
-	public CartItem findCartItemByProduct(Product product, Cart cart) {
+	public CartItem findCartItemByProductAndCart(Product product, Cart cart) {
 		CartItem cartItem = cartItemRepository.findByProductAndCart(product,cart);
 		return cartItem;
+	}
+	
+	public List<CartItem> findCartItemByProduct(Product product) {
+		List<CartItem> cartItems = cartItemRepository.findByProduct(product);
+		return cartItems;
 	}
 
 }

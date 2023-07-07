@@ -19,7 +19,7 @@ public class CustomerService {
 	}
 	
 	public CustomerProfile getOrCreateCustomerProfile(String customerName, String email, String phone, String address) {
-		Optional<CustomerProfile> customerProfile = customerProfileRepository.findByCustomerName(customerName);
+		Optional<CustomerProfile> customerProfile = customerProfileRepository.findByEmail(email);
 		if(customerProfile.isPresent()) {
 			return customerProfile.get();
 		}else {

@@ -5,6 +5,8 @@ import java.math.RoundingMode;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import jakarta.transaction.Transactional;
@@ -13,6 +15,9 @@ import jakarta.transaction.Transactional;
 public class StockService {
 	private final ProductStockRepository productStockRepository;
 	private final ProductRepository productRepository;
+	
+	@Autowired
+    RabbitTemplate rabbitTemplate;
 
 	public StockService(ProductRepository productRepository, ProductStockRepository productStockRepository) {
 		this.productRepository = productRepository;
@@ -35,11 +40,15 @@ public class StockService {
 			productStock.setUnitPrice(request.getUnitPrice());
 			productStock.setUnitCost(request.getUnitCost());
 			productStockRepository.save(productStock);
+			// System.out.println(productStock.getId());
+			System.out.println(productStock.getProduct().getCode());
+			rabbitTemplate.convertAndSend("product.stock.update", productStock.getProduct().getCode());
 			return true;
 		} else {
 			return false;
 		}
 	}
+	
 
 	public ProductStock getStockById(Long stockId) {
 		// Retrieve the stock by ID
@@ -67,6 +76,8 @@ public class StockService {
 			productStock.setUnitCost(request.getUnitCost());
 			// Save the updated stock
 			productStockRepository.save(productStock);
+			//send the code to the listener to update the subTotal and Total amounts for all cart items and their carts respectively.
+			rabbitTemplate.convertAndSend("product.stock.update", productStock.getProduct().getCode());
 			return true;
 		} else {
 			return false;
@@ -80,6 +91,7 @@ public class StockService {
 			ProductStock productStock = optionalProductStock.get();
 			// Delete the product
 			productStockRepository.delete(productStock);
+			rabbitTemplate.convertAndSend("product.stock.update", productStock.getProduct().getCode());
 			return true;
 		} else {
 			return false;
@@ -94,6 +106,7 @@ public class StockService {
 	        Product product = optionalProduct.get();
 	        // Delete all the stock entries for the product
 	        productStockRepository.deleteAllByProduct(product);
+	        rabbitTemplate.convertAndSend("product.stock.update", product.getCode());
 	        return true;
 	    } else {
 	        return false;
