@@ -10,4 +10,6 @@ public interface SaleItemRepository extends JpaRepository<SaleItem, Long> {
 
 	List<SaleItem> findBySale(Sale sale);
 
+	void deleteAllBySale(Sale sale);
+
 }

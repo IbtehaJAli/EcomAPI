@@ -29,6 +29,9 @@ private final SaleRepository saleRepository;
 		return saleRepository.findAll();
 	}
 	
+	public void deleteSale(Sale sale) {
+		saleRepository.delete(sale);
+	}
 	/*public boolean deleteSale(CustomerProfile customer) {
 		Optional<Sale> optionalSale = saleRepository.findByCustomerProfile(customer);
 		if (optionalSale.isPresent()) {

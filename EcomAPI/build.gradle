@@ -26,6 +26,8 @@ dependencies {
 	implementation 'com.fasterxml.jackson.core:jackson-databind:2.12.5'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.12.5'
     implementation 'org.springframework.boot:spring-boot-starter-amqp'
+    implementation 'com.stripe:stripe-java:22.26.0'
+    implementation 'com.google.code.gson:gson'
 	runtimeOnly 'org.postgresql:postgresql'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
