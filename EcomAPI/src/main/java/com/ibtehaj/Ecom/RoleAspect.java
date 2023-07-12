@@ -23,7 +23,7 @@ public class RoleAspect {
         this.userRepository = userRepository;
     }
 
-    @Before("@annotation(RestrictedForAdmin)")
+    @Before("@annotation(RestrictedToAdmin)")
     public void checkRole(JoinPoint joinPoint) throws Throwable {
         HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
         String authorizationHeader = request.getHeader("Authorization");

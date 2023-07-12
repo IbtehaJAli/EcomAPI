@@ -8,4 +8,4 @@ import java.lang.annotation.RetentionPolicy;
 
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface RestrictedForAdmin {}
+public @interface RestrictedToAdmin {}

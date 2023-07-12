@@ -5,11 +5,11 @@ import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.ArrayList;
 
+import org.json.JSONObject;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
@@ -41,14 +41,8 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.util.concurrent.RateLimiter;
-import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Charge;
-import com.stripe.model.Customer;
-import com.stripe.param.ChargeCreateParams;
-import com.stripe.param.CustomerCreateParams;
-
-import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/ecom/")
@@ -103,7 +97,9 @@ public class Controller {
 	
 	@Autowired
 	private final PasswordResetTokenService passwordResetTokenService;
-
+	
+	@Autowired
+	private final StripeService stripeService;
 	@Autowired
 	private final EmailService emailService;
 	
@@ -114,7 +110,7 @@ public class Controller {
 			AccessTokenRepository accessTokenRepository,ProductRepository productRepository, AccessTokenUtils accessTokenUtils,
 			ProductService productService, StockService stockService, CartService cartService, CartItemService cartItemService,
 			CustomerService customerService, SaleService saleService, SaleItemService saleItemService,
-			PasswordResetTokenService passwordResetTokenService, EmailService emailService) {
+			PasswordResetTokenService passwordResetTokenService, StripeService stripeService, EmailService emailService) {
 		this.userRepository = userRepository;
 		this.blacklist = blacklist;
 		this.accessTokenRepository = accessTokenRepository;
@@ -128,6 +124,7 @@ public class Controller {
 		this.saleService = saleService;
 		this.saleItemService = saleItemService;
 		this.passwordResetTokenService = passwordResetTokenService;
+		this.stripeService = stripeService;
 		this.emailService = emailService;
 	}
 	@PostMapping("createProduct")
@@ -463,87 +460,76 @@ public class Controller {
 						finalTotalAmount = totalAmount.add(subtotal);
 						saleService.saveSale(sale);
 					}
-					Stripe.apiKey = stripeSecretKey;
-					ChargeCreateParams params = ChargeCreateParams.builder()
-							.setAmount(finalTotalAmount.multiply(BigDecimal.valueOf(100)).longValue())
-							.setCurrency("usd").setDescription(customer.getEmail()+" Order Id: "+sale.getId().toString())
-							.putMetadata("order_id", sale.getId().toString())
-							.putMetadata("Customer_Email", customer.getEmail())
-							.putMetadata("Customer_Name", customer.getCustomerName())
-							.putMetadata("Customer_Phone", customer.getPhone())
-							.setSource(stripeToken) // Payment token, card token, or source ID
-							.setReceiptEmail(customer.getEmail())
-							.setShipping(ChargeCreateParams.Shipping.builder().setName(customer.getCustomerName())
-									.setPhone(customer.getPhone())
-									.setAddress(ChargeCreateParams.Shipping.Address.builder()
-											.setLine1("123 Main Street").setLine2("Apt 4A").setCity(customer.getAddress())
-											.setState("CA").setCountry("US").setPostalCode("12345").build())
-									.build())
-							.build();
 
-					Charge charge = Charge.create(params); // to-do add exceptional handler, also delete sale
-					/*
-					 * try { charge = Charge.create(chargeParams); } catch (StripeException e) {
-					 * e.printStackTrace(); }
-					 */
+					try {
+						Charge charge = stripeService.ProcessPayment(stripeSecretKey, finalTotalAmount, sale, customer,
+								stripeToken);
+						// Check if the payment source is a card
+						JSONObject sourceJson = new JSONObject(charge.getSource());
+						if (sourceJson.getString("object").equals("card")) {
+							// Extract information about the card payment source and set the sale payment
+							// mode
+							sale.setPaymentMode(sourceJson.getString("brand") + " " + sourceJson.getString("object"));
+						} else {
+							sale.setPaymentMode("unknown");
+						}
 
-					// Handle the response from Stripe
-					if (charge.getPaid()) {
-						for (CartItem cartItem : cartItems) {
-							Product product = cartItem.getProduct();
-							ProductStock productStock = stockService.getOldestAvailableStockByProduct(product);
-							int quantity = cartItem.getQuantity();
-							ProductStockSummary productStockSummary = stockService.getProductStockSummary(product);
-							if (quantity > productStockSummary.getTotalAvailableUnits()) {
-								throw new NoAvailableStockException("Stock not available for " + product.getCode());
-							}
-							BigDecimal unitPrice = productStockSummary.getWeightedAvgUnitPrice();
-							BigDecimal subtotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
-							BigDecimal totalAmount = sale.getTotalAmount();
-							BigDecimal finalTotalAmount2 = totalAmount.add(subtotal);
-							sale.setTotalAmount(finalTotalAmount2);
-							saleService.saveSale(sale);
-							while (quantity > 0) {
-								if (quantity > productStock.getAvailableUnits()) {
-									// Create a sale item with the available units
-									SaleItem saleItem = new SaleItem(sale, productStock,
-											productStock.getAvailableUnits().intValue(),
-											BigDecimal.valueOf(productStock.getAvailableUnits()).multiply(unitPrice),
-											unitPrice, BigDecimal.ZERO);
-									saleItemService.createSaleItem(saleItem);
-									// Reduce the stock
-									Long availableUnits = productStock.getAvailableUnits();
-									Long newAvailableUnits = 0L;
-									productStock.setAvailableUnits(newAvailableUnits);
-									stockService.saveStock(productStock);
-									// Add the product code to the list
-									productCodes.add(product.getCode());
-									// Update the quantity and get the next available stock
-									quantity = quantity - availableUnits.intValue();
-									productStock = stockService.getOldestAvailableStockByProduct(product);
-								} else {
-									// Create a sale item with the requested quantity
-									SaleItem saleItem = new SaleItem(sale, productStock, quantity,
-											BigDecimal.valueOf(quantity).multiply(unitPrice), unitPrice,
-											BigDecimal.ZERO);
-									saleItemService.createSaleItem(saleItem);
-									// Reduce the stock
-									Long availableUnits = productStock.getAvailableUnits();
-									Long newAvailableUnits = availableUnits - quantity;
-									productStock.setAvailableUnits(newAvailableUnits);
-									stockService.saveStock(productStock);
-									// Add the product code to the list
-									productCodes.add(product.getCode());
-									// Set the quantity to 0 to exit the loop
-									quantity = 0;
-								}
+					} catch (StripeException e) {
+						saleService.deleteSale(sale);
+						ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), e.getMessage(),
+								System.currentTimeMillis());
+						return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+					}
+
+					for (CartItem cartItem : cartItems) {
+						Product product = cartItem.getProduct();
+						ProductStock productStock = stockService.getOldestAvailableStockByProduct(product);
+						int quantity = cartItem.getQuantity();
+						ProductStockSummary productStockSummary = stockService.getProductStockSummary(product);
+						if (quantity > productStockSummary.getTotalAvailableUnits()) {
+							throw new NoAvailableStockException("Stock not available for " + product.getCode());
+						}
+						BigDecimal unitPrice = productStockSummary.getWeightedAvgUnitPrice();
+						BigDecimal subtotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
+						BigDecimal totalAmount = sale.getTotalAmount();
+						BigDecimal finalTotalAmount2 = totalAmount.add(subtotal);
+						sale.setTotalAmount(finalTotalAmount2);
+						// sale.setPaymentMode(paymentType);
+						saleService.saveSale(sale);
+						while (quantity > 0) {
+							if (quantity > productStock.getAvailableUnits()) {
+								// Create a sale item with the available units
+								SaleItem saleItem = new SaleItem(sale, productStock,
+										productStock.getAvailableUnits().intValue(),
+										BigDecimal.valueOf(productStock.getAvailableUnits()).multiply(unitPrice),
+										unitPrice, BigDecimal.ZERO);
+								saleItemService.createSaleItem(saleItem);
+								// Reduce the stock
+								Long availableUnits = productStock.getAvailableUnits();
+								Long newAvailableUnits = 0L;
+								productStock.setAvailableUnits(newAvailableUnits);
+								stockService.saveStock(productStock);
+								// Add the product code to the list
+								productCodes.add(product.getCode());
+								// Update the quantity and get the next available stock
+								quantity = quantity - availableUnits.intValue();
+								productStock = stockService.getOldestAvailableStockByProduct(product);
+							} else {
+								// Create a sale item with the requested quantity
+								SaleItem saleItem = new SaleItem(sale, productStock, quantity,
+										BigDecimal.valueOf(quantity).multiply(unitPrice), unitPrice, BigDecimal.ZERO);
+								saleItemService.createSaleItem(saleItem);
+								// Reduce the stock
+								Long availableUnits = productStock.getAvailableUnits();
+								Long newAvailableUnits = availableUnits - quantity;
+								productStock.setAvailableUnits(newAvailableUnits);
+								stockService.saveStock(productStock);
+								// Add the product code to the list
+								productCodes.add(product.getCode());
+								// Set the quantity to 0 to exit the loop
+								quantity = 0;
 							}
 						}
-					} else {
-						saleService.deleteSale(sale);
-						ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(),
-								"Payment process failed", System.currentTimeMillis());
-						return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
 					}
 
 					// Send a single message to update the product stock for all cart items
@@ -619,6 +605,34 @@ public class Controller {
 		}
 			
 	}
+	
+	@GetMapping("getAllSaleItemsBySaleForAdmin/{customerId}")
+	@CheckBlacklist
+	@RestrictedToAdmin
+	public ResponseEntity<?> getAllSaleItemsBySaleForAdmin(@PathVariable Long customerId) {
+			CustomerProfile customer = customerService.getCustomerProfileById(customerId);
+			//System.out.println(customer.getEmail());
+			if(customer!= null) {
+				List<Sale> sales = saleService.getSaleByCustomerProfile(customer);
+				if(!sales.isEmpty()) {
+					List<SaleItem> saleItems = new ArrayList<>();
+					for(Sale sale : sales) {
+						saleItems.addAll(saleItemService.getAllSaleItemsBySale(sale));
+					}
+					
+					return ResponseEntity.ok(saleItems);
+				}else {
+					ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+							"No sale found.", System.currentTimeMillis());
+					return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+				}
+			
+			}else {
+				ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+						"Customer not found.", System.currentTimeMillis());
+				return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+			}	
+	}
 
 	@DeleteMapping("deleteAllSaleItemsforSale/{saleId}")
 	@CheckBlacklist
@@ -648,6 +662,54 @@ public class Controller {
  			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
  		}
 	}
+	
+	@DeleteMapping("deleteAllSaleItemsforSaleForAdmin/{saleId}/{customerId}")
+	@CheckBlacklist
+	@RestrictedToAdmin
+	public ResponseEntity<?> deleteAllSaleItemsforSaleForAdmin(@PathVariable Long saleId, @PathVariable Long customerId) throws CustomAccessDeniedException{
+		    	CustomerProfile customer = customerService.getCustomerProfileById(customerId);
+		    	if(customer != null) {
+		    		boolean deleted = saleItemService.deleteAllSaleItemsforSale(saleId, customer);
+		    		if(deleted) {
+		    			 return ResponseEntity.status(HttpStatus.OK)
+			                        .body(new SuccessResponse("order for "+customer.getCustomerName()+" with order id:"+ saleId+" is deleted successfully."));
+		    		}else {
+		    			 ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+		    					"Sale with" + saleId + " not found.", System.currentTimeMillis());
+		    			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		    		}
+		    	}else {
+					ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+							"Customer not found.", System.currentTimeMillis());
+					return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+				}
+	}
+	
+	@GetMapping("getAllSales")
+	@CheckBlacklist
+	@RestrictedToAdmin
+	public ResponseEntity<?> getAllSales(){
+		List<Sale> sales = saleService.getAllSales();
+		return ResponseEntity.status(HttpStatus.OK).body(sales);
+	}
+	
+	
+	@GetMapping("getAllCustomerProfiles")
+	@CheckBlacklist
+	@RestrictedToAdmin
+	public ResponseEntity<?> getAllCustomerProfiles(){
+		List<CustomerProfile> customerProfiles = customerService.getAllCustomerProfiles();
+		return ResponseEntity.status(HttpStatus.OK).body(customerProfiles);
+	}
+	
+	@GetMapping("getAllUsers")
+	@CheckBlacklist
+	@RestrictedToAdmin
+	public ResponseEntity<?> getAllUsers(){
+		List<User> users = userRepository.findAll();
+		return ResponseEntity.status(HttpStatus.OK).body(users);
+	}
+	
 	@PostMapping("/signup")
 	public ResponseEntity<?> signUp(@Valid @RequestBody SignUpRequest userRequest) {
 
