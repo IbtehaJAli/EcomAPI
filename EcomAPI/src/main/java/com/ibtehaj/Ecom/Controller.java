@@ -279,7 +279,7 @@ public class Controller {
 	@PostMapping("createCartItem/{productId}/{quantity}")
 	@CheckBlacklist
 	public ResponseEntity<?> createCartItem(@PathVariable Long productId, @PathVariable int quantity)
-			throws NoAvailableStockException {
+			throws NoAvailableStockException, CustomAccessDeniedException {
 		String username = accessTokenUtils.getUsernameFromAccessToken();
 		User user = userRepository.findByUsername(username);
 		if (user != null) {
@@ -343,7 +343,7 @@ public class Controller {
 	}
 	@GetMapping("getAllCartItemsByCart/")
 	@CheckBlacklist
-	public ResponseEntity<?> getAllCartItemsByCart() {
+	public ResponseEntity<?> getAllCartItemsByCart() throws CustomAccessDeniedException {
 		String username = accessTokenUtils.getUsernameFromAccessToken();
 		User user = userRepository.findByUsername(username);
 		if(user != null) {
@@ -401,7 +401,7 @@ public class Controller {
 
 	@DeleteMapping("emptyCart/")
 	@CheckBlacklist
-	public ResponseEntity<?> emptyCart() {
+	public ResponseEntity<?> emptyCart() throws CustomAccessDeniedException {
 		String username = accessTokenUtils.getUsernameFromAccessToken();
 		User user = userRepository.findByUsername(username);
 		if (user != null) {
@@ -432,7 +432,7 @@ public class Controller {
 	@PostMapping("checkout/")
 	@CheckBlacklist
 	public ResponseEntity<?> checkout(@RequestParam("stripeToken") String stripeToken)
-			throws NoAvailableStockException, StripeException {
+			throws NoAvailableStockException, StripeException, CustomAccessDeniedException {
 		String username = accessTokenUtils.getUsernameFromAccessToken();
 		User user = userRepository.findByUsername(username);
 		if (user != null) {
@@ -443,7 +443,7 @@ public class Controller {
 					CustomerProfile customer = customerService.getOrCreateCustomerProfile(
 							user.getFirstName() + " " + user.getLastName(), user.getEmail(), user.getPhone(),
 							user.getAddress());
-					Sale sale = new Sale(LocalDateTime.now(), BigDecimal.ZERO, customer, BigDecimal.ZERO, null);
+					Sale sale = new Sale(LocalDateTime.now(), BigDecimal.ZERO, customer, BigDecimal.ZERO, null, SaleStatus.PENDING);
 					// Create a list of product codes to send in the message
 					List<String> productCodes = new ArrayList<>();
 					BigDecimal finalTotalAmount = BigDecimal.ZERO;
@@ -570,7 +570,7 @@ public class Controller {
 	
 	@GetMapping("getAllSaleItemsBySale/")
 	@CheckBlacklist
-	public ResponseEntity<?> getAllSaleItemsBySale() {
+	public ResponseEntity<?> getAllSaleItemsBySale() throws CustomAccessDeniedException {
 		String username = accessTokenUtils.getUsernameFromAccessToken();
 		User user = userRepository.findByUsername(username);
 		if(user != null) {
@@ -683,6 +683,21 @@ public class Controller {
 							"Customer not found.", System.currentTimeMillis());
 					return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
 				}
+	}
+	
+	@PutMapping("/updateSaleStatussales/{saleId}")
+	@CheckBlacklist
+	@RestrictedToAdmin
+	public ResponseEntity<?> updateSaleStatus(@PathVariable Long saleId, @RequestBody SaleStatus status) {
+	    boolean updated = saleService.updateSaleStatus(saleId, status);
+	    if (updated) {
+	    	return ResponseEntity.status(HttpStatus.OK)
+                    .body(new SuccessResponse("Sale status for sale with id: "+saleId+" updated successfully"));
+	    } else {
+	    	ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"Sale with sale id: "+saleId+" not found", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+	    }
 	}
 	
 	@GetMapping("getAllSales")

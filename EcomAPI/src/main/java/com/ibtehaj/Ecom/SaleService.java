@@ -32,6 +32,18 @@ private final SaleRepository saleRepository;
 	public void deleteSale(Sale sale) {
 		saleRepository.delete(sale);
 	}
+	
+	public boolean updateSaleStatus(Long saleId, SaleStatus status) {
+		 Optional<Sale> optionalSale = saleRepository.findById(saleId);
+		 if (optionalSale.isPresent()) {
+		        Sale sale = optionalSale.get();
+		        sale.setStatus(status);
+		        saleRepository.save(sale);
+		        return true;
+		    }else {
+		    	return false;
+		    }
+	}
 	/*public boolean deleteSale(CustomerProfile customer) {
 		Optional<Sale> optionalSale = saleRepository.findByCustomerProfile(customer);
 		if (optionalSale.isPresent()) {

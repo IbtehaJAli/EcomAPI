@@ -125,4 +125,14 @@ public class RestExceptionHandler {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
 		}
 	}
+	 @ExceptionHandler(IllegalArgumentException.class)
+	    public ResponseEntity<ExceptionResponse> handleIllegalArgumentException(IllegalArgumentException e) {
+		// If the cause is a IllegalArgumentException, add the cause's message to the list of errors
+		List<String> errors = new ArrayList<>();
+		errors.add(e.getMessage());
+		ExceptionResponse errorResponse = new ExceptionResponse(errors);
+
+		// Return a response entity with HTTP status code 400 (Bad Request) and the error response object as the body
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+	    }
 }

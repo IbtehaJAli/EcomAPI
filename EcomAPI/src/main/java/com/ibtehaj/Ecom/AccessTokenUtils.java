@@ -15,13 +15,16 @@ public class AccessTokenUtils {
         this.accessTokenRepository = accessTokenRepository;
     }
 
-    public String getUsernameFromAccessToken() {
+    public String getUsernameFromAccessToken() throws CustomAccessDeniedException {
     	HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
         String authorizationHeader = request.getHeader("Authorization");
         String username = null;
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
             String accessToken = authorizationHeader.substring(7);
             AccessTokens access_token =accessTokenRepository.findByAccesstoken(accessToken);
+            if(access_token==null) {
+            	throw new CustomAccessDeniedException("Please login");
+            }
             username=access_token.getUsername();
         }
         return username;

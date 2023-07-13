@@ -27,17 +27,22 @@ public class Sale {
     @Column(name = "payment_mode")
     private String paymentMode;
     
+    @Column(name = "status")
+    @Enumerated(EnumType.STRING)
+    private SaleStatus status;
+    
     public Sale() {};
     
-    public Sale(LocalDateTime saleDateTime, BigDecimal totalAmount, CustomerProfile customer, BigDecimal totalTax,
-			String paymentMode) {
-		super();
-		this.saleDateTime = saleDateTime;
-		this.totalAmount = totalAmount;
-		this.customer = customer;
-		this.totalTax = totalTax;
-		this.paymentMode = paymentMode;
-	}
+    public Sale(LocalDateTime saleDateTime, BigDecimal totalAmount, CustomerProfile customer,
+            BigDecimal totalTax, String paymentMode, SaleStatus status) {
+    super();
+    this.saleDateTime = saleDateTime;
+    this.totalAmount = totalAmount;
+    this.customer = customer;
+    this.totalTax = totalTax;
+    this.paymentMode = paymentMode;
+    this.status = status;
+}
 
     // Constructors, getters, and setters
     public Long getId() {
@@ -86,5 +91,13 @@ public class Sale {
 
 	public void setPaymentMode(String paymentMode) {
 		this.paymentMode = paymentMode;
+	}
+	
+	public SaleStatus getStatus() {
+		return status;
+	}
+
+	public void setStatus(SaleStatus status) {
+		this.status = status;
 	}
 }
