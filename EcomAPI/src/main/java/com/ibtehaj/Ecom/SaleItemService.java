@@ -47,7 +47,10 @@ public class SaleItemService {
 	    Optional<Sale> optionalSale = saleRepository.findById(saleId);
 	    if (optionalSale.isPresent()) {
 	        Sale sale = optionalSale.get();
-	        if(sale.getCustomer().getEmail()==customer.getEmail()) {
+	        if (sale.getCustomer().getEmail().equals(customer.getEmail())) {
+	            if (!sale.getStatus().equals(SaleStatus.PENDING)) {
+	                throw new CustomAccessDeniedException(customer.getCustomerName() + " you are not allowed to delete this order.");
+	            }
 	        List<SaleItem> saleItems = saleItemRepository.findBySale(sale);
 	        for (SaleItem saleItem : saleItems) {
 	        	ProductStock productStock = saleItem.getProductStock();

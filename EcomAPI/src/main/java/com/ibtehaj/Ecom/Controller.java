@@ -547,8 +547,9 @@ public class Controller {
 					// Delete all cart items for the cart in a new thread
 					String id = Long.toString(cart.getId());
 					rabbitTemplate.convertAndSend("checkout", id);
-					System.out.println("Deletion message sent for cart ");
-
+					//System.out.println("Deletion message sent for cart ");
+					//Send confirmation email to the customer
+					emailService.sendSaleConfirmationEmail(sale);
 					return ResponseEntity.status(HttpStatus.CREATED).body(new SuccessResponse(
 							username + " your order with order id:" + sale.getId() + " is created successfully."));
 				} else {
