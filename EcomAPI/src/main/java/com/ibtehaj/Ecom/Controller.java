@@ -129,6 +129,7 @@ public class Controller {
 	}
 	@PostMapping("createProduct")
 	@CheckBlacklist
+	@RestrictedToAdmin
 	public ResponseEntity<?> createProduct(@Valid @RequestBody ProductRequest request) {
 			productService.createProduct(request);
 			return ResponseEntity.status(HttpStatus.CREATED).body(new SuccessResponse("Product created successfully."));
@@ -137,6 +138,7 @@ public class Controller {
 
 	@GetMapping("getProduct/{productId}")
 	@CheckBlacklist
+	@RestrictedToAdmin
 	public ResponseEntity<Product> getProductById(@PathVariable Long productId) {
 		// Retrieve the product by ID
 		Product product = productService.getProductById(productId);
@@ -149,6 +151,7 @@ public class Controller {
 
 	@GetMapping("getAllProducts")
 	@CheckBlacklist
+	@RestrictedToAdmin
 	public ResponseEntity<List<Product>> getAllProducts() {
 		List<Product> products = productService.getAllProducts();
 		return ResponseEntity.ok(products);
@@ -156,6 +159,7 @@ public class Controller {
 
 	@PutMapping("updateProduct/{productId}")
 	@CheckBlacklist
+	@RestrictedToAdmin
 	public ResponseEntity<String> updateProduct(@PathVariable Long productId, @RequestBody ProductRequest request) {
 		// Update the product
 		boolean updated = productService.updateProduct(productId, request);
@@ -168,6 +172,7 @@ public class Controller {
 
 	@DeleteMapping("deleteProduct/{productId}")
 	@CheckBlacklist
+	@RestrictedToAdmin
 	public ResponseEntity<?> deleteProduct(@PathVariable Long productId) {
 		// Delete the product
 		boolean deleted = productService.deleteProduct(productId);
@@ -188,6 +193,7 @@ public class Controller {
 
 	@PostMapping("createStock/{productId}")
 	@CheckBlacklist
+	@RestrictedToAdmin
 	public ResponseEntity<?> createProductStock(@PathVariable Long productId, @Valid @RequestBody StockRequest request) {
 
 		boolean flag = stockService.createProductStock(productId, request);
@@ -203,6 +209,7 @@ public class Controller {
 
 	@GetMapping("getStock/{stockId}")
 	@CheckBlacklist
+	@RestrictedToAdmin
 	public ResponseEntity<?> getStockById(@PathVariable Long stockId) {
 		// Retrieve the stock by ID
 		ProductStock productStock = stockService.getStockById(stockId);
@@ -215,6 +222,7 @@ public class Controller {
 
 	@GetMapping("getAllStocks")
 	@CheckBlacklist
+	@RestrictedToAdmin
 	public ResponseEntity<List<ProductStock>> getAllStocks() {
 		List<ProductStock> productStocks = stockService.getAllStocks();
 		return ResponseEntity.ok(productStocks);
@@ -222,6 +230,7 @@ public class Controller {
 	
 	@GetMapping("getStocksByProduct/{productId}")
 	@CheckBlacklist
+	@RestrictedToAdmin
 	public ResponseEntity<?>getStocksByProduct(@PathVariable Long productId){
 		Optional<Product> optionalProduct = productRepository.findById(productId);
 		if(optionalProduct.isPresent()) {
@@ -238,6 +247,7 @@ public class Controller {
 
 	@PutMapping("updateStock/{stockId}")
 	@CheckBlacklist
+	@RestrictedToAdmin
 	public ResponseEntity<?> updateStock(@PathVariable Long stockId, @RequestBody StockRequest request) {
 		// Update the stock
 		boolean updated = stockService.updateStockforProduct(stockId, request);
@@ -250,6 +260,7 @@ public class Controller {
 
 	@DeleteMapping("deleteStock/{stockId}")
 	@CheckBlacklist
+	@RestrictedToAdmin
 	public ResponseEntity<?> deleteStock(@PathVariable Long stockId) {
 		// Delete the stock
 		boolean deleted = stockService.deleteStockforProduct(stockId);
@@ -264,6 +275,7 @@ public class Controller {
 	
 	@DeleteMapping("deleteAllStockByProduct/{productId}")
 	@CheckBlacklist
+	@RestrictedToAdmin
 	public ResponseEntity<?> deleteAllStockByProduct(@PathVariable Long productId) {
 		// Delete all stocks
 		boolean deleted = stockService.deleteAllStockforProduct(productId);
