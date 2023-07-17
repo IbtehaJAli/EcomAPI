@@ -1,5 +1,6 @@
 package com.ibtehaj.Ecom;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Base64;
@@ -43,6 +44,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.util.concurrent.RateLimiter;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Charge;
+
+import graphql.ExecutionResult;
+import graphql.GraphQL;
+import graphql.schema.GraphQLSchema;
 
 @RestController
 @RequestMapping("/api/ecom/")
@@ -698,7 +703,7 @@ public class Controller {
 				}
 	}
 	
-	@PutMapping("/updateSaleStatussales/{saleId}")
+	@PutMapping("/updateSaleStatus/{saleId}")
 	@CheckBlacklist
 	@RestrictedToAdmin
 	public ResponseEntity<?> updateSaleStatus(@PathVariable Long saleId, @RequestBody SaleStatus status) {
@@ -966,5 +971,18 @@ public class Controller {
 		return ResponseEntity.status(HttpStatus.OK)
 				.body(new SuccessResponse("password for " + user.getEmail() + " has been reset"));
 	}
+	
+	@PostMapping("/graphql")
+	  public String graphqlEndpoint(@RequestBody String query) throws IOException {
+		DataFetchers dataFetchers = new DataFetchers(productService,stockService);
+		GraphQLSchema schema = GraphqlSchemaLoader.loadSchema(dataFetchers);
+		GraphQL graphQL = GraphQL.newGraphQL(schema).build();
+	    
+	    // Construct GraphQL schema and data fetchers
+	    
+	    ExecutionResult executionResult = graphQL.execute(query);
+	    
+	    return new ObjectMapper().writeValueAsString(executionResult.getData());
+	  }
 
 }

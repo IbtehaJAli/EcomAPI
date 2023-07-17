@@ -10,5 +10,6 @@ public interface ProductStockRepository extends JpaRepository<ProductStock, Long
 	void deleteAllByProduct(Product product);
 	List<ProductStock> findByProductOrderByStockDateDesc(Product product);
 	List<ProductStock> findByProductOrderByStockDateAsc(Product product);
+	List<ProductStock> findByProductId(Long productId);
  
 }

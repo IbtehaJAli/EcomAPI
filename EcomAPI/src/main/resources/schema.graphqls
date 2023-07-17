@@ -1,0 +1,23 @@
+type Product {
+  id: ID!
+  productName: String!
+  code: String!
+  attributes: String
+}
+
+type ProductStock {
+  id: ID!
+  product: Product!
+  availableUnits: Int!
+  stockDate: String!
+  unitPrice: Float!
+  unitCost: Float!
+}
+
+type Query {
+  products: [Product!]!
+  product(id: ID!): Product
+  productStock(productStockId: ID!): ProductStock
+  allProductStocks: [ProductStock!]!
+  productStocks(productId: ID!): [ProductStock!]!
+}

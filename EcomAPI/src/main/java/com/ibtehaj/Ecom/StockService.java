@@ -62,6 +62,10 @@ public class StockService {
 	public List<ProductStock>getStocksByProdcut(Product product){
 		return productStockRepository.findByProduct(product);
 	}
+	public List<ProductStock> getProductStocksByProductId(Long productId) {
+	    // Retrieve the product stocks by product ID
+	    return productStockRepository.findByProductId(productId);
+	}
 
 	public boolean updateStockforProduct(Long stockId, StockRequest request) {
 		// Retrieve the stock by ID

@@ -1,5 +1,8 @@
 package com.ibtehaj.Ecom;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -18,7 +21,7 @@ public class Product {
     @Column(unique = true)
     private String code;
 
-    @JsonProperty
+    @JdbcTypeCode(SqlTypes.JSON)
     private String attributes;
 
     // Constructors, getters, and setters
