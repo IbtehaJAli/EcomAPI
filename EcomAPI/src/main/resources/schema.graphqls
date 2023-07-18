@@ -14,10 +14,59 @@ type ProductStock {
   unitCost: Float!
 }
 
+type Sale {
+  id: ID!
+  saleDateTime: String!
+  totalAmount: Float!
+  customer: CustomerProfile!
+  totalTax: Float
+  paymentMode: String
+  status: SaleStatus!
+}
+
+enum SaleStatus {
+  PENDING
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+type CustomerProfile {
+  id: ID!
+  customerName: String!
+  email: String
+  phone: String
+  address: String
+}
+
+type SaleItem {
+  id: ID!
+  sale: Sale!
+  productStock: ProductStock!
+  unitsBought: Int!
+  subTotal: Float!
+  unitPrice: Float!
+  tax: Float
+}
+
 type Query {
   products: [Product!]!
   product(id: ID!): Product
+  
   productStock(productStockId: ID!): ProductStock
   allProductStocks: [ProductStock!]!
   productStocks(productId: ID!): [ProductStock!]!
+  
+  getCustomerProfileById(customerId: ID!): CustomerProfile
+  getCustomerProfileByEmail(email: String!): CustomerProfile
+  getAllCustomerProfiles: [CustomerProfile!]!
+  
+  getSaleById(saleId: ID!): Sale
+  getSalesByCustomerId(customerId: ID!): [Sale!]!
+  getAllSales: [Sale!]!
+  
+  getSaleItemById(saleItemId: ID!): SaleItem
+  getAllSaleItemsBySaleId(saleId: ID!): [SaleItem!]!
+  getAllSaleItems: [SaleItem!]!
+  
 }
