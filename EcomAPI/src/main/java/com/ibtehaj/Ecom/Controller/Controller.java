@@ -57,6 +57,7 @@ import com.ibtehaj.Ecom.Models.Product;
 import com.ibtehaj.Ecom.Models.ProductStock;
 import com.ibtehaj.Ecom.Models.ProductStockSummary;
 import com.ibtehaj.Ecom.Models.ProductSummary;
+import com.ibtehaj.Ecom.Models.Review;
 import com.ibtehaj.Ecom.Models.Sale;
 import com.ibtehaj.Ecom.Models.SaleItem;
 import com.ibtehaj.Ecom.Models.SaleStatus;
@@ -70,6 +71,7 @@ import com.ibtehaj.Ecom.Requests.LogoutRequest;
 import com.ibtehaj.Ecom.Requests.ProductRequest;
 import com.ibtehaj.Ecom.Requests.ResetPasswordRequest;
 import com.ibtehaj.Ecom.Requests.ResetPasswordRequest2;
+import com.ibtehaj.Ecom.Requests.ReviewRequest;
 import com.ibtehaj.Ecom.Requests.SignUpRequest;
 import com.ibtehaj.Ecom.Requests.StockRequest;
 import com.ibtehaj.Ecom.Response.ErrorResponse;
@@ -80,6 +82,7 @@ import com.ibtehaj.Ecom.Service.CustomerService;
 import com.ibtehaj.Ecom.Service.EmailService;
 import com.ibtehaj.Ecom.Service.PasswordResetTokenService;
 import com.ibtehaj.Ecom.Service.ProductService;
+import com.ibtehaj.Ecom.Service.ReviewService;
 import com.ibtehaj.Ecom.Service.SaleItemService;
 import com.ibtehaj.Ecom.Service.SaleService;
 import com.ibtehaj.Ecom.Service.StockService;
@@ -153,13 +156,17 @@ public class Controller {
 	private final EmailService emailService;
 	
 	@Autowired
+	private final ReviewService reviewService;
+	
+	@Autowired
     RabbitTemplate rabbitTemplate;
 
 	public Controller(UserRepository userRepository, TokenBlacklist blacklist,
 			AccessTokenRepository accessTokenRepository,ProductRepository productRepository, AccessTokenUtils accessTokenUtils,
 			ProductService productService, StockService stockService, CartService cartService, CartItemService cartItemService,
 			CustomerService customerService, SaleService saleService, SaleItemService saleItemService,
-			PasswordResetTokenService passwordResetTokenService, StripeService stripeService, EmailService emailService) {
+			PasswordResetTokenService passwordResetTokenService, StripeService stripeService, EmailService emailService,
+			ReviewService reviewService) {
 		this.userRepository = userRepository;
 		this.blacklist = blacklist;
 		this.accessTokenRepository = accessTokenRepository;
@@ -175,6 +182,7 @@ public class Controller {
 		this.passwordResetTokenService = passwordResetTokenService;
 		this.stripeService = stripeService;
 		this.emailService = emailService;
+		this.reviewService = reviewService;
 	}
 	@PostMapping("createProduct")
 	@CheckBlacklist
@@ -787,6 +795,124 @@ public class Controller {
 		List<User> users = userRepository.findAll();
 		return ResponseEntity.status(HttpStatus.OK).body(users);
 	}
+	
+	/*@CheckBlacklist
+	@GetMapping("getReviewById/{id}")
+    public ResponseEntity<?> getReviewById(@PathVariable Long id) {
+        Optional<Review> optionalReview = reviewService.findReviewById(id);
+        if(optionalReview.isPresent()) {
+        	Review review = optionalReview.get();
+        	return ResponseEntity.ok(review);
+        }else {
+        	ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"Review with review id: "+id+" not found", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+        }
+        
+        
+    }
+
+    @GetMapping("getReviewsByCustomer/{customerId}")
+    public ResponseEntity<List<Review>> getReviewsByCustomer(@PathVariable Long customerId) {
+        CustomerProfile customer = new CustomerProfile();
+        customer.setId(customerId);
+
+        List<Review> reviews = reviewService.findReviewsByCustomer(customer);
+        return ResponseEntity.ok(reviews);
+    }
+
+    @GetMapping("getReviewsByProduct/{productId}")
+    public ResponseEntity<List<Review>> getReviewsByProduct(@PathVariable Long productId) {
+        Product product = new Product();
+        product.setId(productId);
+
+        List<Review> reviews = reviewService.findReviewsByProduct(product);
+        return ResponseEntity.ok(reviews);
+    }*/
+
+	@PostMapping("createReview/{productId}")
+	public ResponseEntity<?> createReview(@PathVariable Long productId, @RequestBody @Valid ReviewRequest reviewRequest)
+			throws CustomAccessDeniedException {
+		String username = accessTokenUtils.getUsernameFromAccessToken();
+		User user = userRepository.findByUsername(username);
+		boolean flag = false;
+		if (user != null) {
+			CustomerProfile customer = customerService.getCustomerProfileByEmail(user.getEmail());
+			if (customer != null) {
+				Product product = productService.getProductById(productId);
+				if (product != null) {
+					boolean reviewExists = reviewService.doesReviewExist(productId, customer.getId());
+					if (reviewExists) {
+						ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(),
+								"A review for this product already exists by the same customer.",
+								System.currentTimeMillis());
+						return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+					}
+					List<Sale> sales = saleService.getSaleByCustomerProfile(customer);
+					if (!sales.isEmpty()) {
+						for (Sale sale : sales) {
+							List<SaleItem> saleItems = saleItemService.getAllSaleItemsBySale(sale);
+							for (SaleItem saleItem : saleItems) {
+								if (productId == saleItem.getProductStock().getProduct().getId()) {
+									flag = true;
+									break; // Break out of the inner loop (saleItems loop)
+								}
+							}
+							if (flag) {
+								break; // Break out of the outer loop (sales loop)
+							}
+						}
+						if (!flag) {
+							ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(),
+									username + ", please buy this product first", System.currentTimeMillis());
+							return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+						} else {
+							Review review = new Review(customer, reviewRequest.getRating(), reviewRequest.getComment(),
+									product);
+							reviewService.createReview(review);
+							return ResponseEntity.status(HttpStatus.OK)
+									.body(new SuccessResponse("Review for product with id :" + productId
+											+ " has been created successfully by " + username));
+						}
+					} else {
+						ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(),
+								username + ", please make your first purchase by buying this product",
+								System.currentTimeMillis());
+						return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+
+					}
+				} else {
+					ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+							"Cant create a review as product with product id: " + productId + " not found",
+							System.currentTimeMillis());
+					return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+				}
+			} else {
+				ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(),
+						username + ", please make your first purchase by buying this product",
+						System.currentTimeMillis());
+				return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+
+			}
+		} else {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"User with user name" + username + " not found.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+	}
+
+
+   /* @PutMapping("updateReview/{id}")
+    public ResponseEntity<Review> updateReview(@PathVariable Long id, @RequestBody @Valid Review review) {
+        Review updatedReview = reviewService.updateReview(id, review);
+        return ResponseEntity.ok(updatedReview);
+    }
+
+    @DeleteMapping("deleteReview/{id}")
+    public ResponseEntity<Void> deleteReview(@PathVariable Long id) {
+        reviewService.deleteReviewById(id);
+        return ResponseEntity.noContent().build();
+    }*/
 	
 	@PostMapping("/signup")
 	public ResponseEntity<?> signUp(@Valid @RequestBody SignUpRequest userRequest) {

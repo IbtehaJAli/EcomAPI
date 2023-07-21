@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
+import com.ibtehaj.Ecom.Controller.StockUpdateSSEController;
 import com.ibtehaj.Ecom.Exception.NoAvailableStockException;
 import com.ibtehaj.Ecom.Models.Cart;
 import com.ibtehaj.Ecom.Models.CartItem;
@@ -22,12 +23,15 @@ public class ProductStockListener {
 	private final CartItemService cartItemService;
 	private final CartService cartService;
 	private final ProductService productService;
+    private final StockUpdateSSEController sseController;
 	
-	public ProductStockListener(StockService stockService, CartItemService cartItemService, CartService cartService, ProductService productService) {
+	public ProductStockListener(StockService stockService, CartItemService cartItemService, CartService cartService, ProductService productService,
+			StockUpdateSSEController sseController) {
 		this.stockService = stockService;
 		this.cartItemService = cartItemService;
 		this.cartService = cartService;
 		this.productService = productService;
+		this.sseController = sseController;
 	}
     
 	@RabbitListener(queues = "product.stock.update")
@@ -54,6 +58,8 @@ public class ProductStockListener {
 			cartService.saveCart(cart);
 			System.out.println("listened");
 		}
+		 // Trigger SSE update
+        sseController.triggerPriceUpdate(productStockSummary.getWeightedAvgUnitPrice().doubleValue());
 
 	}
 
