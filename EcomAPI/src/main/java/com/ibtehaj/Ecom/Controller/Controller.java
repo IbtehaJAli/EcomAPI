@@ -796,41 +796,23 @@ public class Controller {
 		return ResponseEntity.status(HttpStatus.OK).body(users);
 	}
 	
-	/*@CheckBlacklist
-	@GetMapping("getReviewById/{id}")
-    public ResponseEntity<?> getReviewById(@PathVariable Long id) {
-        Optional<Review> optionalReview = reviewService.findReviewById(id);
-        if(optionalReview.isPresent()) {
-        	Review review = optionalReview.get();
-        	return ResponseEntity.ok(review);
-        }else {
-        	ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
-					"Review with review id: "+id+" not found", System.currentTimeMillis());
+	@GetMapping("/getAllReviews")
+	@CheckBlacklist
+	@RestrictedToAdmin
+	public ResponseEntity<?> getAllReviews() {
+		List<Review> reviews = reviewService.getAllReviews();
+
+		if (reviews.isEmpty()) {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), "No reviews found",
+					System.currentTimeMillis());
 			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
-        }
-        
-        
-    }
+		}
 
-    @GetMapping("getReviewsByCustomer/{customerId}")
-    public ResponseEntity<List<Review>> getReviewsByCustomer(@PathVariable Long customerId) {
-        CustomerProfile customer = new CustomerProfile();
-        customer.setId(customerId);
-
-        List<Review> reviews = reviewService.findReviewsByCustomer(customer);
-        return ResponseEntity.ok(reviews);
-    }
-
-    @GetMapping("getReviewsByProduct/{productId}")
-    public ResponseEntity<List<Review>> getReviewsByProduct(@PathVariable Long productId) {
-        Product product = new Product();
-        product.setId(productId);
-
-        List<Review> reviews = reviewService.findReviewsByProduct(product);
-        return ResponseEntity.ok(reviews);
-    }*/
+		return ResponseEntity.status(HttpStatus.OK).body(reviews);
+	}
 
 	@PostMapping("createReview/{productId}")
+	@CheckBlacklist
 	public ResponseEntity<?> createReview(@PathVariable Long productId, @RequestBody @Valid ReviewRequest reviewRequest)
 			throws CustomAccessDeniedException {
 		String username = accessTokenUtils.getUsernameFromAccessToken();
@@ -901,18 +883,201 @@ public class Controller {
 		}
 	}
 
+	@GetMapping("getReviewByProductIdAndCustomer/{productId}")
+	@CheckBlacklist
+	public ResponseEntity<?> getReviewByProductIdAndCustomer(@PathVariable Long productId)
+			throws CustomAccessDeniedException {
+		String username = accessTokenUtils.getUsernameFromAccessToken();
+		User user = userRepository.findByUsername(username);
+		if (user == null) {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"User with username " + username + " not found.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
 
-   /* @PutMapping("updateReview/{id}")
-    public ResponseEntity<Review> updateReview(@PathVariable Long id, @RequestBody @Valid Review review) {
-        Review updatedReview = reviewService.updateReview(id, review);
-        return ResponseEntity.ok(updatedReview);
-    }
+		CustomerProfile customer = customerService.getCustomerProfileByEmail(user.getEmail());
+		if (customer == null) {
+			ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(),
+					username + ", please make your first purchase by buying this product", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+		}
 
-    @DeleteMapping("deleteReview/{id}")
-    public ResponseEntity<Void> deleteReview(@PathVariable Long id) {
-        reviewService.deleteReviewById(id);
-        return ResponseEntity.noContent().build();
-    }*/
+		Product product = productService.getProductById(productId);
+		if (product == null) {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"Product with product id: " + productId + " not found", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+
+		Review review = reviewService.getReviewByProductAndCustomer(productId, customer.getId());
+		if (review == null) {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"No review found for product with id: " + productId + " by " + username,
+					System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+
+		return ResponseEntity.status(HttpStatus.OK).body(review);
+	}
+
+	@GetMapping("/getProductReviews/{productId}")
+	@CheckBlacklist
+	public ResponseEntity<?> getProductReviews(@PathVariable Long productId) {
+		Product product = productService.getProductById(productId);
+
+		if (product == null) {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"Product with product id: " + productId + " not found", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+
+		List<Review> reviews = reviewService.findReviewsByProduct(product);
+
+		if (reviews.isEmpty()) {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"No reviews found for product with id: " + productId, System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+
+		return ResponseEntity.status(HttpStatus.OK).body(reviews);
+	}
+
+	@GetMapping("/getCustomerReviews")
+	@CheckBlacklist
+	public ResponseEntity<?> getCustomerReviews() throws CustomAccessDeniedException {
+		String username = accessTokenUtils.getUsernameFromAccessToken();
+		User user = userRepository.findByUsername(username);
+
+		if (user == null) {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"User with username " + username + " not found.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+
+		CustomerProfile customer = customerService.getCustomerProfileByEmail(user.getEmail());
+
+		if (customer == null) {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"Customer with username " + username + " not found.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+
+		List<Review> reviews = reviewService.findReviewsByCustomer(customer);
+
+		if (reviews.isEmpty()) {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"No reviews found for customer with username: " + username, System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+
+		return ResponseEntity.status(HttpStatus.OK).body(reviews);
+	}
+
+	@PutMapping("/updateReview/{reviewId}")
+	@CheckBlacklist
+	public ResponseEntity<?> updateReview(@PathVariable Long reviewId, @RequestBody @Valid ReviewRequest reviewRequest)
+			throws CustomAccessDeniedException {
+		String username = accessTokenUtils.getUsernameFromAccessToken();
+		User user = userRepository.findByUsername(username);
+
+		if (user == null) {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"User with username " + username + " not found.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+
+		CustomerProfile customer = customerService.getCustomerProfileByEmail(user.getEmail());
+
+		if (customer == null) {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"Customer with username " + username + " not found.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+
+		Optional<Review> optionalReview = reviewService.findReviewById(reviewId);
+
+		if (!optionalReview.isPresent()) {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"Review with ID: " + reviewId + " not found", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+
+		Review existingReview = optionalReview.get();
+
+		if (existingReview.getCustomer().getId() != customer.getId()) {
+			ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(),
+					"You are not authorized to update this review", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+		}
+
+		existingReview.setRating(reviewRequest.getRating());
+		existingReview.setComment(reviewRequest.getComment());
+
+		reviewService.updateReview(existingReview);
+
+		return ResponseEntity.status(HttpStatus.OK)
+				.body(new SuccessResponse("Review with ID: " + reviewId + " has been updated successfully"));
+	}
+
+	@DeleteMapping("/deleteReview/{reviewId}")
+	@CheckBlacklist
+	public ResponseEntity<?> deleteReview(@PathVariable Long reviewId) throws CustomAccessDeniedException {
+		String username = accessTokenUtils.getUsernameFromAccessToken();
+		User user = userRepository.findByUsername(username);
+
+		if (user == null) {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"User with username " + username + " not found.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+
+		CustomerProfile customer = customerService.getCustomerProfileByEmail(user.getEmail());
+
+		if (customer == null) {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"Customer with username " + username + " not found.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+
+		Optional<Review> optionalReview = reviewService.findReviewById(reviewId);
+
+		if (!optionalReview.isPresent()) {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"Review with ID: " + reviewId + " not found", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+
+		Review existingReview = optionalReview.get();
+
+		if (existingReview.getCustomer().getId() != customer.getId()) {
+			ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(),
+					"You are not authorized to delete this review", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+		}
+
+		reviewService.deleteReviewById(reviewId);
+
+		return ResponseEntity.status(HttpStatus.OK)
+				.body(new SuccessResponse("Review with ID: " + reviewId + " has been deleted successfully"));
+	}
+	
+	@DeleteMapping("/deleteReviewForAdmin/{reviewId}")
+	@CheckBlacklist
+	@RestrictedToAdmin
+	public ResponseEntity<?> deleteReviewForAdmin(@PathVariable Long reviewId) {
+		Optional<Review> optionalReview = reviewService.findReviewById(reviewId);
+
+		if (!optionalReview.isPresent()) {
+			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
+					"Review with ID: " + reviewId + " not found", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		}
+		reviewService.deleteReviewById(reviewId);
+
+		return ResponseEntity.status(HttpStatus.OK)
+				.body(new SuccessResponse("Review with ID: " + reviewId + " has been deleted successfully"));
+	}
+
 	
 	@PostMapping("/signup")
 	public ResponseEntity<?> signUp(@Valid @RequestBody SignUpRequest userRequest) {

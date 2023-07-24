@@ -1,6 +1,5 @@
 package com.ibtehaj.Ecom.Service;
 
-
 import com.ibtehaj.Ecom.Models.CustomerProfile;
 import com.ibtehaj.Ecom.Models.Product;
 import com.ibtehaj.Ecom.Models.Review;
@@ -21,7 +20,7 @@ public class ReviewService {
 
     // Create a new review
     public void createReview(Review review) {
-         reviewRepository.save(review);
+        reviewRepository.save(review);
     }
 
     // Get all reviews
@@ -45,8 +44,8 @@ public class ReviewService {
     }
 
     // Update review
-    public Review updateReview(Review review) {
-        return reviewRepository.save(review);
+    public void updateReview(Review review) {
+         reviewRepository.save(review);
     }
 
     // Delete review by ID
@@ -57,5 +56,10 @@ public class ReviewService {
     // Check if a review already exists for a product by a customer
     public boolean doesReviewExist(Long productId, Long customerId) {
         return reviewRepository.existsByProduct_IdAndCustomer_Id(productId, customerId);
+    }
+
+    // Find review by product and customer
+    public Review getReviewByProductAndCustomer(Long productId, Long customerId) {
+        return reviewRepository.findByProduct_IdAndCustomer_Id(productId, customerId);
     }
 }
