@@ -62,4 +62,20 @@ public class ReviewService {
     public Review getReviewByProductAndCustomer(Long productId, Long customerId) {
         return reviewRepository.findByProduct_IdAndCustomer_Id(productId, customerId);
     }
+    
+    //Find the average rating for a product
+    public double getAverageRatingForProduct(Product product) {
+        List<Review> reviews = reviewRepository.findByProduct(product);
+
+        if (reviews.isEmpty()) {
+            return 0.0; // Return 0 if there are no reviews
+        }
+
+        double totalRating = 0.0;
+        for (Review review : reviews) {
+            totalRating += review.getRating();
+        }
+
+        return totalRating / reviews.size();
+    }
 }

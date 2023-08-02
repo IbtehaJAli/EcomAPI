@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import com.ibtehaj.Ecom.Exception.CustomAccessDeniedException;
 import com.ibtehaj.Ecom.Models.CustomerProfile;
+import com.ibtehaj.Ecom.Models.Product;
 import com.ibtehaj.Ecom.Models.ProductStock;
 import com.ibtehaj.Ecom.Models.Sale;
 import com.ibtehaj.Ecom.Models.SaleItem;
@@ -54,6 +55,10 @@ public class SaleItemService {
 	public List<SaleItem> getAllSaleItems (){
 		return saleItemRepository.findAll();
 	}
+	
+	public List<SaleItem> findSaleItemsByProduct(Product product) {
+        return saleItemRepository.findByProductStock_Product(product);
+    }
 	
 	@Transactional
 	public boolean deleteAllSaleItemsforSale(Long saleId, CustomerProfile customer) throws CustomAccessDeniedException {

@@ -5,6 +5,7 @@ import java.math.RoundingMode;
 import java.util.List;
 import java.util.Optional;
 import java.util.ArrayList;
+import java.util.Comparator;
 
 import org.springframework.stereotype.Service;
 
@@ -13,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ibtehaj.Ecom.Models.Product;
 import com.ibtehaj.Ecom.Models.ProductStock;
 import com.ibtehaj.Ecom.Models.ProductSummary;
+import com.ibtehaj.Ecom.Models.SaleItem;
 import com.ibtehaj.Ecom.Repository.ProductRepository;
 import com.ibtehaj.Ecom.Repository.ProductStockRepository;
 import com.ibtehaj.Ecom.Requests.ProductRequest;
@@ -22,10 +24,15 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final ProductStockRepository productStockRepository;
+    private final ReviewService reviewService;
+    private final SaleItemService saleItemService;
 
-    public ProductService(ProductRepository productRepository, ProductStockRepository productStockRepository) {
+    public ProductService(ProductRepository productRepository, ProductStockRepository productStockRepository, ReviewService reviewService, 
+    		SaleItemService saleItemService) {
         this.productRepository = productRepository;
         this.productStockRepository = productStockRepository;
+        this.reviewService = reviewService;
+        this.saleItemService = saleItemService;
     }
     public Product findProductByCode(String code) {
     	return productRepository.findByCode(code);
@@ -100,7 +107,7 @@ public class ProductService {
         }
     }
     
-    public List<ProductSummary> getProductListWithStockSummary() {
+    public List<ProductSummary> getProductListWithStockSummary(String sortBy) {
         // Retrieve list of all products
         List<Product> productList = productRepository.findAll();
 
@@ -123,7 +130,7 @@ public class ProductService {
                 continue; // Skip this product if total available units is zero
             }
             BigDecimal weightedAvgUnitPrice = totalUnitPrice.divide(BigDecimal.valueOf(totalAvailableUnits), 2, RoundingMode.HALF_UP);
-
+            
             // Create a new ProductSummary instance with the stock summary information and add it to the list
             ProductSummary productSummary = new ProductSummary();
             productSummary.setId(product.getId());
@@ -132,8 +139,27 @@ public class ProductService {
             productSummary.setAttributes(product.getAttributes());
             productSummary.setTotalAvailableUnits(totalAvailableUnits);
             productSummary.setWeightedAvgUnitPrice(weightedAvgUnitPrice);
+            productSummary.setReviewCount(reviewService.findReviewsByProduct(product).size());
+            productSummary.setAverageRating(reviewService.getAverageRatingForProduct(product));
+            productSummary.setTotalUnitsSold(saleItemService.findSaleItemsByProduct(product).stream().mapToInt(SaleItem::getUnitsBought).sum()); // Set total units sold 
             productListWithStockSummary.add(productSummary);
         }
+        // Sort the list based on the sortBy parameter
+		if ("lowToHigh".equals(sortBy)) {
+			productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getWeightedAvgUnitPrice));
+		} else if ("highToLow".equals(sortBy)) {
+			productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getProductName).reversed());
+		} else if ("nameAsc".equals(sortBy)) {
+			productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getProductName));
+		} else if ("nameDesc".equals(sortBy)) {
+			productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getProductName).reversed());
+		} else if ("mostReviewed".equals(sortBy)) {
+			productListWithStockSummary.sort(Comparator.comparingInt(ProductSummary::getReviewCount).reversed());
+		} else if ("topRated".equals(sortBy)) {
+			productListWithStockSummary.sort(Comparator.comparingDouble(ProductSummary::getAverageRating).reversed());
+		} else if ("bestSelling".equals(sortBy)) {
+	        productListWithStockSummary.sort(Comparator.comparingInt(ProductSummary::getTotalUnitsSold).reversed());
+	    }
 
         return productListWithStockSummary;
     }

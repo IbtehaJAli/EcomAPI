@@ -1,0 +1,59 @@
+version: '3.8'
+services:
+  postgres-db:
+    image: postgres:latest
+    container_name: postgres-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mysecretpassword
+    ports:
+      - "5432:5432" # Map container port 5432 to host port 5432 for PostgreSQL
+    networks:
+      - my-network
+
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: rabbitmq
+    restart: always
+    ports:
+      - "5672:5672" # Map container port 5672 to host port 5672 for RabbitMQ
+      - "15672:15672" # Map container port 15672 to host port 15672 for RabbitMQ management UI
+    networks:
+      - my-network
+
+  spring-app:
+    image: api-image:latest # Replace with the name of your Spring Boot Docker image
+    container_name: spring-app
+    restart: always
+    depends_on:
+      - postgres-db
+      - rabbitmq
+    ports:
+      - "8080:8080" # Map container port 8080 to host port 8080 for the Spring Boot application
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/postgres
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: mysecretpassword
+      SPRING_JPA_HIBERNATE_DDL-AUTO: create-drop
+      SPRING_DATASOURCE_DRIVER-CLASS-NAME: org.postgresql.Driver
+      SPRING_JPA_DATABASE-PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+      OKTA_OAUTH2_CLIENT-ID: 0oa9vrqo11qlLeUYI5d7
+      OKTA_OAUTH2_CLIENT-SECRET: fO4xp8UIGequXSukXahNGviwUp2WQFbBw69qd501
+      OKTA_OAUTH2_ISSUER: https://dev-85342491.okta.com/oauth2/default
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY: TRACE
+      SPRING_MAIL_HOST: smtp.gmail.com
+      SPRING_MAIL_PORT: 587
+      SPRING_MAIL_USERNAME: jangobotmailer123@gmail.com
+      SPRING_MAIL_PASSWORD: guwzcmnttihhraye
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: true
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: true
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_VALIDATION: DEBUG
+      STRIPE_SECRETKEY: sk_test_51NSeiZAG2WELfDecIw8AzK7mxB8pmNRO3vqus1SqBN4B4zogTp22Iu3dt2czO9iyGoQsM6r4FtdltlhQaOAB2j0E00WnomuQB6
+      STRIPE_PUBLISHABLEKEY: pk_test_51NSeiZAG2WELfDecpSMfIXhFIXaUsaFqJr3g7sQmsUGuW7LW8DU4kQNGhe4sLaqpr23C7KRkhmnWS0Qgys2K3Sbw0089gQYLwq
+    networks:
+      - my-network
+
+networks:
+  my-network:
+    driver: bridge

@@ -244,8 +244,8 @@ public class Controller {
 	
 	@GetMapping("/products-with-stock-summary")
 	@CheckBlacklist
-	public ResponseEntity<List<ProductSummary>> getProductListWithStockSummary() {
-	    List<ProductSummary> productListWithStockSummary = productService.getProductListWithStockSummary();
+	public ResponseEntity<List<ProductSummary>> getProductListWithStockSummary( @RequestParam(name = "sortBy", required = false) String sortBy) {
+	    List<ProductSummary> productListWithStockSummary = productService.getProductListWithStockSummary(sortBy);
 	    return ResponseEntity.ok(productListWithStockSummary);
 	}
 
