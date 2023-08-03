@@ -248,6 +248,14 @@ public class Controller {
 	    List<ProductSummary> productListWithStockSummary = productService.getProductListWithStockSummary(sortBy);
 	    return ResponseEntity.ok(productListWithStockSummary);
 	}
+	
+	@GetMapping("/searchProductListByKeyword")
+	@CheckBlacklist
+	public ResponseEntity<List<ProductSummary>> searchProductListByKeyword( @RequestParam("keyword") String keyword) {
+	    List<ProductSummary> productListWithStockSummary = productService.getProductListWithStockSummary("");
+	    List<ProductSummary> matchedProductsList = productService.searchProductListByKeyword(productListWithStockSummary,keyword);
+	    return ResponseEntity.ok(matchedProductsList);
+	}
 
 	@PostMapping("createStock/{productId}")
 	@CheckBlacklist

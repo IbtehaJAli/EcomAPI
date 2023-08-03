@@ -4,12 +4,17 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Iterator;
 
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ibtehaj.Ecom.Models.Product;
 import com.ibtehaj.Ecom.Models.ProductStock;
@@ -141,14 +146,18 @@ public class ProductService {
             productSummary.setWeightedAvgUnitPrice(weightedAvgUnitPrice);
             productSummary.setReviewCount(reviewService.findReviewsByProduct(product).size());
             productSummary.setAverageRating(reviewService.getAverageRatingForProduct(product));
-            productSummary.setTotalUnitsSold(saleItemService.findSaleItemsByProduct(product).stream().mapToInt(SaleItem::getUnitsBought).sum()); // Set total units sold 
+            productSummary.setTotalUnitsSold(saleItemService.findSaleItemsByProduct(product).stream().mapToInt(SaleItem::getUnitsBought).sum()); // Set total units sold
+            productSummary.setLastestDate(productStockList.stream()
+                    .max(Comparator.comparing(ProductStock::getStockDate))// returns the object with latest date
+                    .map(ProductStock::getStockDate)// to extract the desired property i-e date in this case, from the productStock object
+                    .orElse(null));
             productListWithStockSummary.add(productSummary);
         }
         // Sort the list based on the sortBy parameter
 		if ("lowToHigh".equals(sortBy)) {
 			productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getWeightedAvgUnitPrice));
 		} else if ("highToLow".equals(sortBy)) {
-			productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getProductName).reversed());
+			productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getWeightedAvgUnitPrice).reversed());
 		} else if ("nameAsc".equals(sortBy)) {
 			productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getProductName));
 		} else if ("nameDesc".equals(sortBy)) {
@@ -159,8 +168,66 @@ public class ProductService {
 			productListWithStockSummary.sort(Comparator.comparingDouble(ProductSummary::getAverageRating).reversed());
 		} else if ("bestSelling".equals(sortBy)) {
 	        productListWithStockSummary.sort(Comparator.comparingInt(ProductSummary::getTotalUnitsSold).reversed());
-	    }
+	    } else if ("oldestFirst".equals(sortBy)) {
+	        productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getLastestDate));
+	    } else if ("recentFirst".equals(sortBy)) {
+	            productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getLastestDate).reversed());
+	        }
+
 
         return productListWithStockSummary;
     }
+    
+    public List<ProductSummary> searchProductListByKeyword(List<ProductSummary> productList, String keyword) {
+        List<ProductSummary> matchedProducts = new ArrayList<>();
+        Set<String> keywordTokens = new HashSet<>(Arrays.asList(keyword.split("\\s+")));
+
+        for (ProductSummary productSummary : productList) {
+            String attributesJson = productSummary.getAttributes();
+
+            try {
+                ObjectMapper objectMapper = new ObjectMapper();
+                JsonNode attributesNode = objectMapper.readTree(attributesJson);
+
+                if (hasAllTokensInJsonNode(attributesNode, keywordTokens)) {
+                    matchedProducts.add(productSummary);
+                }
+            } catch (JsonProcessingException e) {
+                // Handle JSON processing exception
+            }
+        }
+
+        return matchedProducts;
+    }
+
+    public boolean hasAllTokensInJsonNode(JsonNode node, Set<String> tokens) {
+        Set<String> values = getNodeValues(node);
+
+        return values.containsAll(tokens);
+    }
+
+    public Set<String> getNodeValues(JsonNode node) {
+        Set<String> values = new HashSet<>();
+
+        if (node.isTextual()) {
+            values.add(node.asText());
+        }
+
+        if (node.isArray()) {
+            for (JsonNode childNode : node) {
+                values.addAll(getNodeValues(childNode));
+            }
+        }
+
+        if (node.isObject()) {
+            Iterator<String> fieldNames = node.fieldNames();
+            while (fieldNames.hasNext()) {
+                String fieldName = fieldNames.next();
+                values.addAll(getNodeValues(node.get(fieldName)));
+            }
+        }
+
+        return values;
+    }
+
 }

@@ -1,6 +1,9 @@
 package com.ibtehaj.Ecom.Models;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public class ProductSummary {
     
@@ -13,21 +16,35 @@ public class ProductSummary {
     private int reviewCount;
     private double averageRating;
     private int totalUnitsSold;
+    @JsonIgnore
+    private LocalDate lastestDate;
     
     // Constructors, getters, and setters
     public ProductSummary(){};
     
-    public ProductSummary(String productName, String code, String attributes, Long totalAvailableUnits,
-			BigDecimal weightedAvgUnitPrice, int reviewCount, double averageRating, int totalUnitsSold) {
-		super();
+    /**
+	 * @param productName
+	 * @param code
+	 * @param attributes
+	 * @param totalAvailableUnits
+	 * @param weightedAvgUnitPrice
+	 * @param reviewCount
+	 * @param averageRating
+	 * @param totalUnitsSold
+	 * @param lastestDate
+	 */
+	public ProductSummary(String productName, String code, String attributes, Long totalAvailableUnits,
+			BigDecimal weightedAvgUnitPrice, int reviewCount, double averageRating, int totalUnitsSold,
+			LocalDate lastestDate) {
 		this.productName = productName;
 		this.code = code;
 		this.attributes = attributes;
 		this.totalAvailableUnits = totalAvailableUnits;
 		this.weightedAvgUnitPrice = weightedAvgUnitPrice;
-		this.reviewCount  = reviewCount;
+		this.reviewCount = reviewCount;
 		this.averageRating = averageRating;
 		this.totalUnitsSold = totalUnitsSold;
+		this.lastestDate = lastestDate;
 	}
     
 	public Long getId() {
@@ -83,5 +100,13 @@ public class ProductSummary {
 	}
 	public void setTotalUnitsSold(int totalUnitsSold) {
 		this.totalUnitsSold = totalUnitsSold;
+	}
+
+	public LocalDate getLastestDate() {
+		return lastestDate;
+	}
+
+	public void setLastestDate(LocalDate lastestDate) {
+		this.lastestDate = lastestDate;
 	}
 }
