@@ -11,6 +11,9 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -112,7 +115,7 @@ public class ProductService {
         }
     }
     
-    public List<ProductSummary> getProductListWithStockSummary(String sortBy) {
+    public List<ProductSummary> getProductListWithStockSummary() {
         // Retrieve list of all products
         List<Product> productList = productRepository.findAll();
 
@@ -153,29 +156,40 @@ public class ProductService {
                     .orElse(null));
             productListWithStockSummary.add(productSummary);
         }
-        // Sort the list based on the sortBy parameter
-		if ("lowToHigh".equals(sortBy)) {
-			productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getWeightedAvgUnitPrice));
-		} else if ("highToLow".equals(sortBy)) {
-			productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getWeightedAvgUnitPrice).reversed());
-		} else if ("nameAsc".equals(sortBy)) {
-			productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getProductName));
-		} else if ("nameDesc".equals(sortBy)) {
-			productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getProductName).reversed());
-		} else if ("mostReviewed".equals(sortBy)) {
-			productListWithStockSummary.sort(Comparator.comparingInt(ProductSummary::getReviewCount).reversed());
-		} else if ("topRated".equals(sortBy)) {
-			productListWithStockSummary.sort(Comparator.comparingDouble(ProductSummary::getAverageRating).reversed());
-		} else if ("bestSelling".equals(sortBy)) {
-	        productListWithStockSummary.sort(Comparator.comparingInt(ProductSummary::getTotalUnitsSold).reversed());
-	    } else if ("oldestFirst".equals(sortBy)) {
-	        productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getLastestDate));
-	    } else if ("recentFirst".equals(sortBy)) {
-	            productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getLastestDate).reversed());
-	        }
-
-
         return productListWithStockSummary;
+    }
+    
+    public Page<ProductSummary> getSortedproductListWithStockSummary(List<ProductSummary> productListWithStockSummary, String sortBy, int pageNumber, int pageSize){
+    	 // Sort the list based on the sortBy parameter
+        if ("lowToHigh".equals(sortBy)) {
+            productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getWeightedAvgUnitPrice));
+        } else if ("highToLow".equals(sortBy)) {
+            productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getWeightedAvgUnitPrice).reversed());
+        } else if ("nameAsc".equals(sortBy)) {
+            productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getProductName));
+        } else if ("nameDesc".equals(sortBy)) {
+            productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getProductName).reversed());
+        } else if ("mostReviewed".equals(sortBy)) {
+            productListWithStockSummary.sort(Comparator.comparingInt(ProductSummary::getReviewCount).reversed());
+        } else if ("topRated".equals(sortBy)) {
+            productListWithStockSummary.sort(Comparator.comparingDouble(ProductSummary::getAverageRating).reversed());
+        } else if ("bestSelling".equals(sortBy)) {
+            productListWithStockSummary.sort(Comparator.comparingInt(ProductSummary::getTotalUnitsSold).reversed());
+        } else if ("oldestFirst".equals(sortBy)) {
+            productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getLastestDate));
+        } else if ("recentFirst".equals(sortBy)) {
+            productListWithStockSummary.sort(Comparator.comparing(ProductSummary::getLastestDate).reversed());
+        }
+
+        // Paginate the list based on the pageNumber and pageSize
+        int start = (pageNumber - 1) * pageSize;
+        int end = Math.min(start + pageSize, productListWithStockSummary.size());
+        List<ProductSummary> paginatedList = productListWithStockSummary.subList(start, end);
+
+        // Create a Page object with the paginated list and metadata
+        Page<ProductSummary> page = new PageImpl<>(paginatedList, PageRequest.of(pageNumber - 1, pageSize), productListWithStockSummary.size());
+
+        return page;
     }
     
     public List<ProductSummary> searchProductListByKeyword(List<ProductSummary> productList, String keyword) {

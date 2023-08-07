@@ -36,6 +36,7 @@ import org.springframework.web.client.RestTemplate;
 import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -244,15 +245,24 @@ public class Controller {
 	
 	@GetMapping("/products-with-stock-summary")
 	@CheckBlacklist
-	public ResponseEntity<List<ProductSummary>> getProductListWithStockSummary( @RequestParam(name = "sortBy", required = false) String sortBy) {
-	    List<ProductSummary> productListWithStockSummary = productService.getProductListWithStockSummary(sortBy);
-	    return ResponseEntity.ok(productListWithStockSummary);
+	public ResponseEntity<?> getSortedProductListWithStockSummary( 
+			@RequestParam(name = "sortBy", required = false) String sortBy,
+			@RequestParam(name = "page", defaultValue = "1") int pageNumber,
+	        @RequestParam(name = "size", defaultValue = "2") int pageSize) {
+		if(pageNumber == 0) {
+			ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(),
+					"0 is not a valid page number.", System.currentTimeMillis());
+			return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+		}
+	    List<ProductSummary> productListWithStockSummary = productService.getProductListWithStockSummary();
+	    Page<ProductSummary> page = productService.getSortedproductListWithStockSummary(productListWithStockSummary, sortBy, pageNumber,pageSize);
+	    return ResponseEntity.ok(page);
 	}
 	
 	@GetMapping("/searchProductListByKeyword")
 	@CheckBlacklist
 	public ResponseEntity<List<ProductSummary>> searchProductListByKeyword( @RequestParam("keyword") String keyword) {
-	    List<ProductSummary> productListWithStockSummary = productService.getProductListWithStockSummary("");
+	    List<ProductSummary> productListWithStockSummary = productService.getProductListWithStockSummary();
 	    List<ProductSummary> matchedProductsList = productService.searchProductListByKeyword(productListWithStockSummary,keyword);
 	    return ResponseEntity.ok(matchedProductsList);
 	}
