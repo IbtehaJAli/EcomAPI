@@ -19,6 +19,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -1125,8 +1126,10 @@ public class Controller {
 		}
 
 		if (flag) {
+			// encrypt the password
+			String hashedPassword = new BCryptPasswordEncoder().encode(userRequest.getPassword());
 			// Create user
-			User user = new User(userRequest.getUsername(), userRequest.getPassword(), userRequest.getEmail(),
+			User user = new User(userRequest.getUsername(), hashedPassword, userRequest.getEmail(),
 			userRequest.getFirstName(), userRequest.getLastName(), userRequest.getPhone(), userRequest.getAddress(), Collections.singleton(UserRole.ROLE_USER));
 			userRepository.save(user);
 			return ResponseEntity.ok(new SuccessResponse("User registered successfully"));
@@ -1152,7 +1155,7 @@ public class Controller {
 		User user = userRepository.findByEmail(userRequest.getEmail());
 
 		// Check if user does not exist or password does not match
-		if (user == null || !user.getPassword().equals(userRequest.getPassword())) {
+		if (user == null || !new BCryptPasswordEncoder().matches(userRequest.getPassword(), user.getPassword())) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(),
 					"Incorrect username/email or password", System.currentTimeMillis()));
 		} else {
