@@ -1,6 +1,9 @@
 package com.ibtehaj.Ecom.Models;
 import jakarta.persistence.*;
 import java.util.Set;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.HashSet;
 import java.util.List;
 
@@ -12,6 +15,7 @@ public class User {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 	private String username;
+	@JsonIgnore
 	private String password;
 	private String email;
 	private String firstName;

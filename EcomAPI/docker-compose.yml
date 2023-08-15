@@ -23,7 +23,7 @@ services:
       - my-network
 
   spring-app:
-    image: api-image:latest # Replace with the name of your Spring Boot Docker image
+    image: api-image3:latest # Replace with the name of your Spring Boot Docker image
     container_name: spring-app
     restart: always
     depends_on:
