@@ -1,5 +1,6 @@
 package com.ibtehaj.Ecom.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,5 +16,7 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
 	List<Sale> findByCustomer(CustomerProfile customer);
 
 	List<Sale> findByCustomerId(Long customerId);
+	
+	List<Sale> findBySaleDateTimeBetween(LocalDateTime startDate, LocalDateTime endDate);
    
 }
