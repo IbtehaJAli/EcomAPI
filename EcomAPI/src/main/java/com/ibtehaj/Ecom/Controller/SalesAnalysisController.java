@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.TreeMap;
@@ -19,9 +20,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.ibtehaj.Ecom.Models.Product;
 import com.ibtehaj.Ecom.Models.ProductStock;
+import com.ibtehaj.Ecom.Models.Review;
 import com.ibtehaj.Ecom.Models.Sale;
 import com.ibtehaj.Ecom.Models.SaleItem;
 import com.ibtehaj.Ecom.Models.SalesAnalysisReport;
+import com.ibtehaj.Ecom.Repository.ReviewRepository;
 import com.ibtehaj.Ecom.Repository.SaleRepository;
 import com.ibtehaj.Ecom.Service.SaleItemService;
 
@@ -33,13 +36,18 @@ public class SalesAnalysisController {
 	private SaleRepository saleRepository;
 	@Autowired
 	private SaleItemService saleItemService;
+	@Autowired
+	private ReviewRepository reviewRepository;
 
 	@GetMapping("/sales-analysis")
 	public ResponseEntity<?> generateSalesAnalysisReport(
 			@RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
-			@RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate) {
+			@RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
+			@RequestParam(name = "sortSaleItemsBy", required = false) String sortBy) {
 
 		List<Sale> sales = saleRepository.findBySaleDateTimeBetween(startDate.atStartOfDay(),
+				endDate.atTime(23, 59, 59));
+		List<Review> reviews = reviewRepository.findByDateTimeBetween(startDate.atStartOfDay(),
 				endDate.atTime(23, 59, 59));
 
 		BigDecimal totalSales = BigDecimal.ZERO; //total revenue 
@@ -54,6 +62,12 @@ public class SalesAnalysisController {
 		LocalDate dateWithLeastUnitsBought; // date where least number of units were sold
 		Map<Product, BigDecimal> totalRevenueByProduct = new HashMap<>(); // Tracks revenue by product
 		Map<Product, Integer> unitsBoughtByProduct = new HashMap<>(); // Tracks units bought by product
+		Product productWithHighestRevenue = new Product(); // product that produced highest revenue
+		Product productWithLowestRevenue = new Product(); // product that produced lowest revenue
+		Product mostReviewedProduct = new Product(); //product that was reviewed most // not implemented yet
+		Product leastReviewedProduct = new Product(); // product that was least reviewed // not implemented yet
+		Product productWithHighestRating = new Product(); // product with highest rating
+		Product productWithLowestRating = new Product(); // product with lowest rating
 
 		for (Sale sale : sales) {
 			totalSales.add(sale.getTotalAmount());
@@ -78,11 +92,11 @@ public class SalesAnalysisController {
 			
 		}
 		// Find the product with the maximum units bought
-		productWithMaxUnits = saleItems.stream().max(Comparator.comparingInt(SaleItem::getUnitsBought))
-				.map(SaleItem::getProductStock).map(ProductStock::getProduct).orElse(null);
+		productWithMaxUnits = unitsBoughtByProduct.entrySet().stream().max(Map.Entry.comparingByValue())
+				.map(Map.Entry::getKey).orElse(null);
 		// Find the product with the minimum units bought
-		productWithMaxUnits = saleItems.stream().min(Comparator.comparingInt(SaleItem::getUnitsBought))
-				.map(SaleItem::getProductStock).map(ProductStock::getProduct).orElse(null);
+		productWithMaxUnits = unitsBoughtByProduct.entrySet().stream().min(Map.Entry.comparingByValue())
+				.map(Map.Entry::getKey).orElse(null);
 		// Find the date with the highest revenue
 		dateWithHighestRevenue = revenueByDate.entrySet().stream().max(Map.Entry.comparingByValue())
 				.map(Map.Entry::getKey).orElse(null);
@@ -113,7 +127,7 @@ public class SalesAnalysisController {
 		dateWithLeastUnitsBought = saleItems.stream()
 		    .collect(Collectors.groupingBy(
 		        saleItem -> saleItem.getSale().getSaleDateTime().toLocalDate(), // Group SaleItems by their sale date
-		        Collectors.summingInt(SaleItem::getUnitsBought) // Calculate the sum of units bought for each date
+		        Collectors.summingInt(SaleItem::getUnitsBought)// Calculate the sum of units bought for each date
 		    ))
 		    .entrySet().stream()
 		    .min(Map.Entry.comparingByValue()) // Find the entry with the least sum of units bought
@@ -131,6 +145,49 @@ public class SalesAnalysisController {
 		                TreeMap::new // Use TreeMap to store the sorted entries
 		        ));
 		
+		// find the product with highest revenue
+		productWithHighestRevenue = totalRevenueByProduct.entrySet().stream().max(Map.Entry.comparingByValue())
+				.map(Map.Entry::getKey).orElse(null);
+		
+		//find the product with least revenue
+		productWithLowestRevenue = totalRevenueByProduct.entrySet().stream().min(Map.Entry.comparingByValue())
+				.map(Map.Entry::getKey).orElse(null);
+		
+		//find product with highest rating
+		productWithHighestRating = reviews.stream()
+		    .collect(Collectors.groupingBy(
+		        review -> review.getProduct(), // Group reviews by their product
+		        Collectors.summingInt(Review::getRating)// Calculate the sum of ratings for each product
+		    ))
+		    .entrySet().stream()
+		    .max(Map.Entry.comparingByValue()) // Find the entry with the highest sum of rating
+		    .map(Map.Entry::getKey) // Get the corresponding product key
+		    .orElse(null); // If no product found, assign null to productWithHighestRating	
+		
+		//find product with lowest rating
+		productWithLowestRating = reviews.stream()
+		    .collect(Collectors.groupingBy(
+		        review -> review.getProduct(), // Group reviews by their product
+		        Collectors.summingInt(Review::getRating)// Calculate the sum of ratings for each product
+		    ))
+		    .entrySet().stream()
+		    .min(Map.Entry.comparingByValue()) // Find the entry with the least sum of rating
+		    .map(Map.Entry::getKey) // Get the corresponding product key
+		    .orElse(null); // If no product found, assign null to productWithLowestRating	
+		
+		//sort the saleItems list according to passed parameter
+		if(sortBy.equals("date")) {
+			saleItems.sort(Comparator.comparing(s->s.getSale().getSaleDateTime()));
+		}else if(sortBy.equals("totalAmount")) {
+			saleItems.sort(Comparator.comparing(s->s.getSale().getTotalAmount()));
+			Collections.reverse(saleItems);
+		}else if(sortBy.equals("subTotal")) {
+			saleItems.sort(Comparator.comparing(SaleItem::getSubTotal));
+		}else if(sortBy.equals("unitsBought")) {
+			saleItems.sort(Comparator.comparing(SaleItem::getUnitsBought));
+		}
+		
+		
 		SalesAnalysisReport report = new SalesAnalysisReport();
 		report.setTotalSales(totalSales);
 	    report.setSaleItems(saleItems);
@@ -144,7 +201,12 @@ public class SalesAnalysisController {
 	    report.setDateWithLeastUnitsBought(dateWithLeastUnitsBought);
 	    report.setTotalRevenueByProduct(totalRevenueByProduct);
 	    report.setUnitsBoughtByProduct(unitsBoughtByProduct);
-	    
+	    report.setProductWithHighestRevenue(productWithHighestRevenue);
+	    report.setProductWithLowestRevenue(productWithLowestRevenue);
+//	    report.setMostReviewedProduct();
+//	    report.setLeastReviewedProduct();
+	    report.setProductWithHighestRating(productWithHighestRating);
+	    report.setProductWithLowestRating(productWithLowestRating);
 		return ResponseEntity.ok(report);
 	}
 }

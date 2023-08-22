@@ -88,23 +88,35 @@
     - When users register, we hash and salt their passwords using BCrypt before storing them in the database.
     - During user authentication, we securely compare hashed passwords using BCrypt to ensure maximum password security.
 57. **Sales Analysis Report:**
+	-`reports/sales-analysis` endpoint provides sales analysis report.
     - Added a new class, `SalesAnalysisReport`, to store and retrieve sales analysis data.
     - The class includes the following fields:
-        - `totalSales`: The total sales amount.
-        - `saleItems`: A list of sale items.
-        - `totalUnitsSold`: The total number of units sold.
-        - `productWithMaxUnits`: The product with the maximum units sold.
-        - `productWithMinUnits`: The product with the minimum units sold.
-        - `revenueByDate`: A map of revenue by date.
-        - `dateWithHighestRevenue`: The date with the highest revenue.
-        - `dateWithLowestRevenue`: The date with the lowest revenue.
-        - `dateWithMostUnitsBought`: The date with the most units bought.
-        - `dateWithLeastUnitsBought`: The date with the least units bought.
-        - `totalRevenueByProduct`: A map of total revenue by product.
-        - `unitsBoughtByProduct`: A map of units bought by product.
+      - `totalSales`: The total sales amount.
+      - `saleItems`: A list of sale items.
+      - `totalUnitsSold`: The total number of units sold.
+      - `productWithMaxUnits`: The product with the maximum units sold.
+      - `productWithMinUnits`: The product with the minimum units sold.
+      - `revenueByDate`: A map of revenue by date.
+      - `dateWithHighestRevenue`: The date with the highest revenue.
+      - `dateWithLowestRevenue`: The date with the lowest revenue.
+      - `dateWithMostUnitsBought`: The date with the most units bought.
+      - `dateWithLeastUnitsBought`: The date with the least units bought.
+      - `totalRevenueByProduct`: A map of total revenue by product.
+      - `unitsBoughtByProduct`: A map of units bought by product.
+      - `productWithHighestRevenue`: The product that generated the highest revenue.
+      - `productWithLowestRevenue`: The product that generated the lowest revenue.
+      - `mostReviewedProduct`: The product that was reviewed the most.
+      - `leastReviewedProduct`: The product that was reviewed the least.
+      - `productWithHighestRating`: The product with the highest rating.
+      - `productWithLowestRating`: The product with the lowest rating.
     - Implemented a controller method, `generateSalesAnalysisReport`, that calculates the sales analysis data based on the provided start and end dates.
-    - The calculated data includes the total sales amount, sale items, total units sold, product with the maximum units sold, product with the minimum units sold, revenue by date, date with the highest revenue, date with the lowest revenue, date with the most units bought, date with the least units bought, total revenue by product, and units bought by product.
+    - The calculated data includes the total sales amount, sale items, total units sold, product with the maximum units sold, product with the minimum units sold, revenue by date, date with the highest revenue, date with the lowest revenue, date with the most units bought, date with the least units bought, total revenue by product, units bought by product, product with the highest revenue, product with the lowest revenue, most reviewed product, least reviewed product, product with the highest rating, and product with the lowest rating.
     - The calculated data is populated in an instance of `SalesAnalysisReport` and returned in the response for further analysis or display.
+    - The `saleItems` list can be sorted based on a specified parameter by passing the request parameter `sortSaleItemsBy`. The supported parameters for sorting are:
+      - `"date"`: Sorts the sale items by the sale date and time in ascending order.
+      - `"totalAmount"`: Sorts the sale items by the total amount in descending order.
+      - `"subTotal"`: Sorts the sale items by the sub-total amount in ascending order.
+      - `"unitsBought"`: Sorts the sale items by the number of units bought in ascending order.
 
 
  

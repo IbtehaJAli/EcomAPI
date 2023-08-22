@@ -20,6 +20,12 @@ public class SalesAnalysisReport {
     private LocalDate dateWithLeastUnitsBought;
     private Map<Product, BigDecimal> totalRevenueByProduct;
 	private Map<Product, Integer> unitsBoughtByProduct; 
+	private Product productWithHighestRevenue;
+	private Product productWithLowestRevenue;
+	private Product mostReviewedProduct;// later 
+	private Product leastReviewedProduct; // later
+	private Product productWithHighestRating; 
+	private Product productWithLowestRating;
 
     // Default constructor
     public SalesAnalysisReport() {
@@ -122,5 +128,55 @@ public class SalesAnalysisReport {
 	public void setUnitsBoughtByProduct(Map<Product, Integer> unitsBoughtByProduct) {
 		this.unitsBoughtByProduct = unitsBoughtByProduct;
 	}
+
+	public Product getProductWithHighestRevenue() {
+		return productWithHighestRevenue;
+	}
+
+	public void setProductWithHighestRevenue(Product productWithHighestRevenue) {
+		this.productWithHighestRevenue = productWithHighestRevenue;
+	}
+
+	public Product getProductWithLowestRevenue() {
+		return productWithLowestRevenue;
+	}
+
+	public void setProductWithLowestRevenue(Product productWithLowestRevenue) {
+		this.productWithLowestRevenue = productWithLowestRevenue;
+	}
+
+	public Product getMostReviewedProduct() {
+		return mostReviewedProduct;
+	}
+
+	public void setMostReviewedProduct(Product mostReviewedProduct) {
+		this.mostReviewedProduct = mostReviewedProduct;
+	}
+
+	public Product getLeastReviewedProduct() {
+		return leastReviewedProduct;
+	}
+
+	public void setLeastReviewedProduct(Product leastReviewedProduct) {
+		this.leastReviewedProduct = leastReviewedProduct;
+	}
+
+	public Product getProductWithHighestRating() {
+		return productWithHighestRating;
+	}
+
+	public void setProductWithHighestRating(Product productWithHighestRating) {
+		this.productWithHighestRating = productWithHighestRating;
+	}
+
+	public Product getProductWithLowestRating() {
+		return productWithLowestRating;
+	}
+
+	public void setProductWithLowestRating(Product productWithLowestRating) {
+		this.productWithLowestRating = productWithLowestRating;
+	}
+
+
 
 }

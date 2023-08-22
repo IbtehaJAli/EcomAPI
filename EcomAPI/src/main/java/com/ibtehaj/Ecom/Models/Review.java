@@ -3,6 +3,7 @@ package com.ibtehaj.Ecom.Models;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "reviews")
@@ -27,6 +28,8 @@ public class Review implements Serializable {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id")
     private Product product;
+    
+    private LocalDateTime dateTime;
 
     // Constructors, getters, setters, and other methods
 
@@ -40,6 +43,7 @@ public class Review implements Serializable {
 		this.rating = rating;
 		this.comment = comment;
 		this.product = product;
+		this.dateTime = LocalDateTime.now();
 	}
 
     // Getters and Setters
@@ -83,5 +87,14 @@ public class Review implements Serializable {
 		this.product = product;
 	}
 
+	public LocalDateTime getDate() {
+		return dateTime;
+	}
+
+	public void setDate() {
+		this.dateTime = LocalDateTime.now();
+	}
+
+	
 }
 
