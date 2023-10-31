@@ -14,7 +14,7 @@ services:
 
   rabbitmq:
     image: rabbitmq:management
-    container_name: rabbitmq
+    container_name: rabbitmq-2
     restart: always
     ports:
       - "5672:5672" # Map container port 5672 to host port 5672 for RabbitMQ
@@ -23,7 +23,7 @@ services:
       - my-network
 
   spring-app:
-    image: api-image3:latest # Replace with the name of your Spring Boot Docker image
+    image: ecom:latest # Replace with the name of your Spring Boot Docker image
     container_name: spring-app
     restart: always
     depends_on:

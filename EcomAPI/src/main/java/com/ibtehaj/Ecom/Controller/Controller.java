@@ -425,7 +425,7 @@ public class Controller {
 
 		} else {
 			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
-					"User with user name" + username + " not found.", System.currentTimeMillis());
+					"User with user name " + username + " not found.", System.currentTimeMillis());
 			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
 		}
 
@@ -447,7 +447,7 @@ public class Controller {
 			}
 		}else {
 			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
-					"User with user name"+ username+" not found.", System.currentTimeMillis());
+					"User with user name "+ username+" not found.", System.currentTimeMillis());
 			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
 		}
 			
@@ -459,7 +459,7 @@ public class Controller {
 		boolean updated = cartItemService.updateCartItem(cartItemId, quantity);
 		if(updated) {
 			return ResponseEntity.status(HttpStatus.OK)
-					.body(new SuccessResponse("CartItem with id: "+cartItemId+" updated  successfully."));
+					.body(new SuccessResponse("CartItem with id: "+cartItemId+" updated successfully."));
 		}
 		else {
 			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
@@ -479,7 +479,7 @@ public class Controller {
 		}
 		if(deleted) {
 			return ResponseEntity.status(HttpStatus.OK)
-					.body(new SuccessResponse("CartItem with id: "+cartItemId+" deleted  successfully."));
+					.body(new SuccessResponse("CartItem with id: "+cartItemId+" deleted successfully."));
 		}else {
 			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
 					"CartItem with id: "+cartItemId+" was not found.", System.currentTimeMillis());
@@ -512,7 +512,7 @@ public class Controller {
 			}
 		} else {
 			ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(),
-					"User with user name" + username + " not found.", System.currentTimeMillis());
+					"User with user name " + username + " not found.", System.currentTimeMillis());
 			return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
 		}
 

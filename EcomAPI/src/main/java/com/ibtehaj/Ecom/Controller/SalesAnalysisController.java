@@ -2,6 +2,8 @@ package com.ibtehaj.Ecom.Controller;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -19,7 +21,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ibtehaj.Ecom.Models.Product;
-import com.ibtehaj.Ecom.Models.ProductStock;
 import com.ibtehaj.Ecom.Models.Review;
 import com.ibtehaj.Ecom.Models.Sale;
 import com.ibtehaj.Ecom.Models.SaleItem;
@@ -46,7 +47,7 @@ public class SalesAnalysisController {
 			@RequestParam(name = "sortSaleItemsBy", required = false) String sortBy) {
 
 		List<Sale> sales = saleRepository.findBySaleDateTimeBetween(startDate.atStartOfDay(),
-				endDate.atTime(23, 59, 59));
+				endDate.atTime(LocalTime.MIDNIGHT.minus(1,ChronoUnit.SECONDS)));
 		List<Review> reviews = reviewRepository.findByDateTimeBetween(startDate.atStartOfDay(),
 				endDate.atTime(23, 59, 59));
 
@@ -95,7 +96,7 @@ public class SalesAnalysisController {
 		productWithMaxUnits = unitsBoughtByProduct.entrySet().stream().max(Map.Entry.comparingByValue())
 				.map(Map.Entry::getKey).orElse(null);
 		// Find the product with the minimum units bought
-		productWithMaxUnits = unitsBoughtByProduct.entrySet().stream().min(Map.Entry.comparingByValue())
+		productWithMinUnits = unitsBoughtByProduct.entrySet().stream().min(Map.Entry.comparingByValue())
 				.map(Map.Entry::getKey).orElse(null);
 		// Find the date with the highest revenue
 		dateWithHighestRevenue = revenueByDate.entrySet().stream().max(Map.Entry.comparingByValue())

@@ -1,7 +1,13 @@
 package com.ibtehaj.Ecom.Models;
 import java.math.BigDecimal;
 public class ProductStockSummary {
-    private BigDecimal weightedAvgUnitPrice;
+    /**
+	 * 
+	 */
+	public ProductStockSummary() {
+	}
+
+	private BigDecimal weightedAvgUnitPrice;
     private Long totalAvailableUnits;
 
     public ProductStockSummary(BigDecimal weightedAvgUnitPrice, Long totalAvailableUnits) {
